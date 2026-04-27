@@ -1,5 +1,5 @@
 // backend/server.js — Repo Grab API server
-// Requires: ANTHROPIC_API_KEY env var (and optionally GITHUB_TOKEN for higher rate limits)
+// Optionally set GITHUB_TOKEN for higher rate limits (60 → 5000 req/hr).
 //
 // Run:  node server.js          (or: npm start)
 // Dev:  npm run dev             (restarts on file changes, Node 18+)
@@ -10,7 +10,6 @@ import express from "express";
 import cors from "cors";
 import path from "path";
 import { fileURLToPath } from "url";
-import Anthropic from "@anthropic-ai/sdk";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PORT = process.env.PORT || 3000;
@@ -22,12 +21,7 @@ app.use(express.json());
 // Serve the frontend static files
 app.use(express.static(path.join(__dirname, "../frontend")));
 
-// ── Anthropic client ──────────────────────────────────────────────────────
-const anthropic = new Anthropic({
-  apiKey: process.env.ANTHROPIC_API_KEY, // set this in your environment
-});
-
-// ── Plain-text summary extracted from markdown (fallback when Claude fails) ──
+// ── Plain-text summary extracted from markdown ────────────────────────────
 function extractSummary(md, maxChars = 300) {
   if (!md) return null;
   let text = md.replace(/```[\s\S]*?```/g, "");
@@ -73,41 +67,6 @@ async function ghFetch(url) {
     headers.Authorization = `Bearer ${process.env.GITHUB_TOKEN}`;
   }
   return fetch(url, { headers });
-}
-
-// ── Claude Haiku summary ──────────────────────────────────────────────────
-async function generateSummary(readmeText, repoName, description) {
-  if (!readmeText || !process.env.ANTHROPIC_API_KEY) return null;
-
-  // Strip fenced code blocks and limit input size to stay within token budget
-  const cleaned = readmeText
-    .replace(/```[\s\S]*?```/g, "")
-    .replace(/`[^`]+`/g, (m) => m.slice(1, -1))
-    .slice(0, 5000);
-
-  try {
-    const message = await anthropic.messages.create({
-      model: "claude-haiku-4-5-20251001",
-      max_tokens: 160,
-      messages: [
-        {
-          role: "user",
-          content: `Summarise this GitHub repository in 2–3 sentences for someone deciding whether to download it. Be plain and specific: what does it do, who is it for, what do you need to use it? Do not start with "This repository" or repeat the repo name.
-
-Repo: ${repoName}
-Description: ${description || "(none)"}
-
-README (excerpt):
-${cleaned}`,
-        },
-      ],
-    });
-    return message.content[0].text.trim();
-  } catch (err) {
-    // Non-fatal — fall back to no summary rather than crashing the request
-    console.error("[claude]", err.message);
-    return null;
-  }
 }
 
 // ── README-based app complexity analysis ──────────────────────────────────
@@ -347,7 +306,7 @@ app.get("/api/repo", async (req, res) => {
     const [repoRes, releasesRes, readmeRes] = await Promise.all([
       ghFetch(`https://api.github.com/repos/${owner}/${repo}`),
       ghFetch(
-        `https://api.github.com/repos/${owner}/${repo}/releases?per_page=20`,
+        `https://api.github.com/repos/${owner}/${repo}/releases?per_page=5`,
       ),
       ghFetch(`https://api.github.com/repos/${owner}/${repo}/readme`),
     ]);
@@ -388,13 +347,7 @@ app.get("/api/repo", async (req, res) => {
       }
     }
 
-    // Generate AI summary with Claude Haiku, fall back to plain extraction if it fails
-    const aiSummary = await generateSummary(
-      readmeText,
-      repoJson.name,
-      repoJson.description,
-    );
-    const readmeSummary = aiSummary ?? extractSummary(readmeText);
+    const readmeSummary = extractSummary(readmeText);
 
     // Analyze README + assets to rate how easy the app is to run
     const assetNames = releases.flatMap(r => (r.assets || []).map(a => a.name));
@@ -418,11 +371,6 @@ app.get("*", (_req, res) => {
 if (process.env.NODE_ENV !== "production" && !process.env.VERCEL) {
   app.listen(PORT, () => {
     console.log(`GitHub Download Button running at http://localhost:${PORT}`);
-    if (!process.env.ANTHROPIC_API_KEY) {
-      console.warn(
-        "[warn] ANTHROPIC_API_KEY not set — summaries will be skipped",
-      );
-    }
     if (!process.env.GITHUB_TOKEN) {
       console.warn(
         "[warn] GITHUB_TOKEN not set — GitHub rate limit is 60 req/hr",

@@ -226,7 +226,7 @@ async function fetchRepoDataApi(owner, repo) {
 
   const data = await res.json();
   // Backend returns { repoJson, releases, readmeSummary }
-  return { ...data, summaryIsAi: data.readmeSummary != null };
+  return { ...data, summaryIsAi: false };
 }
 
 // ── Unified fetch ─────────────────────────────────────────────────────────
@@ -235,9 +235,7 @@ async function fetchRepoData(owner, repo) {
 }
 
 // ── Loading steps ─────────────────────────────────────────────────────────
-const LOADING_STEPS = IS_SERVED
-  ? ['Reaching github.com…', 'Reading repository details', 'Checking for releases', 'Summarising with Claude…']
-  : ['Reaching github.com…', 'Reading repository details', 'Checking for releases', 'Preparing download options'];
+const LOADING_STEPS = ['Reaching github.com…', 'Reading repository details', 'Checking for releases', 'Preparing download options'];
 
 // ── Toast hook ────────────────────────────────────────────────────────────
 function useToast() {
@@ -771,7 +769,7 @@ function LoadedView({ data, onReset, showToast }) {
         {/* RIGHT — README */}
         <section className="card">
           <div className="card-header">
-            <h2>What to do next</h2>
+            <h2>About the repository</h2>
             <span className="status-pill" title="README from the repository">
               <Icon.Book />
               readme
@@ -1010,7 +1008,7 @@ function ReadmeView({ summary, readmeUrl, isAi }) {
         <Icon.ExternalLink />
       </a>
       <p style={{ margin: 0, fontSize: 12, color: 'var(--ink-3)', fontFamily: "'JetBrains Mono', monospace" }}>
-        {isAi ? 'summarised by claude haiku · from the readme' : 'extracted from readme · not ai-generated'}
+        {'extracted from readme'}
       </p>
     </div>
   );
