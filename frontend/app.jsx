@@ -96,13 +96,13 @@ function extractSummary(md, maxChars = 300) {
 // ── Repo complexity rating ────────────────────────────────────────────────
 function computeRating(releases) {
   if (!releases || releases.length === 0)
-    return { tier: 'technical', label: 'Technical', detail: 'Source code only · setup required' };
+    return { tier: 'technical', label: 'Technical', detail: 'Source code only. Setup required.' };
   const hasRunnable = releases.some(r =>
     r.assets && r.assets.some(a => a.os === 'windows' || a.os === 'mac' || a.os === 'linux')
   );
   return hasRunnable
-    ? { tier: 'simple',    label: 'Simple',    detail: 'Download and run — no setup needed' }
-    : { tier: 'technical', label: 'Technical', detail: 'No runnable releases · coding knowledge required' };
+    ? { tier: 'simple',    label: 'Simple',    detail: 'Download and run. No setup needed.' }
+    : { tier: 'technical', label: 'Technical', detail: 'No runnable releases. Coding knowledge required.' };
 }
 
 // ── File size formatter for release assets ────────────────────────────────
@@ -133,8 +133,7 @@ function labelAsset(name) {
   if (n.endsWith('.appimage'))
     return { label: 'Linux AppImage', os: 'linux' };
 
-  // Platform token in filename — covers patterns like:
-  //   app.win-x64.zip, app-windows-amd64.tar.gz, app_linux_arm64.zip, app.osx-x64.zip
+  // Platform token in filename
   const isWindows = /[.\-_](win(dows)?|win(32|64))[.\-_]/.test(n) || n.includes('windows');
   const isMac     = /[.\-_](osx|macos|darwin)[.\-_]/.test(n) || n.includes('darwin') || n.includes('macos');
   const isLinux   = /[.\-_]linux[.\-_]/.test(n) || n.includes('linux');
@@ -150,7 +149,7 @@ function labelAsset(name) {
   if (isLinux)   return { label: `Linux${arch}`, os: 'linux' };
 
   // Fallback by extension
-  if (n.endsWith('.zip'))                        return { label: 'ZIP archive', os: 'generic' };
+  if (n.endsWith('.zip'))                          return { label: 'ZIP archive', os: 'generic' };
   if (n.endsWith('.tar.gz') || n.endsWith('.tgz')) return { label: 'TAR archive', os: 'generic' };
   if (n === 'source code (zip)' || n === 'source code (tar.gz)')
     return { label: name, os: 'source' };
@@ -269,6 +268,7 @@ function App() {
   const [error, setError] = useState(null); // { kind, message }
   const [toast, showToast] = useToast();
   const [recent, addRecent] = useRecent();
+  const [showHowItWorks, setShowHowItWorks] = useState(false);
   const inputRef = useRef(null);
   const abortRef = useRef(null);
 
@@ -360,13 +360,13 @@ function App() {
 
       let msg = '';
       if (err.kind === 'notfound') {
-        msg = `We couldn't find that repository. Double-check the URL — owners and names are case-sensitive.`;
+        msg = `We couldn't find that repository. Double-check the URL; owners and names are case-sensitive.`;
       } else if (err.kind === 'private') {
         msg = `This repository is private. Repo Grab can only download public repositories.`;
       } else if (err.kind === 'ratelimit') {
         msg = `GitHub's rate limit was hit. Wait a minute and try again, or use a GitHub token.`;
       } else {
-        msg = `Something went wrong fetching that repo. GitHub may be having issues — try again in a moment.`;
+        msg = `Something went wrong fetching that repo. GitHub may be having issues. Try again in a moment.`;
       }
       setError({ kind: err.kind || 'error', message: msg });
       setStage('error');
@@ -389,18 +389,27 @@ function App() {
 
       <header className="topbar">
         <div className="brand">
-          <div className="brand-mark" aria-hidden="true">↓</div>
+          <svg className="brand-mark" width="28" height="28" viewBox="0 0 1080 1080" fill="none" aria-hidden="true">
+              <g clipPath="url(#brand-clip)">
+                <path fillRule="evenodd" clipRule="evenodd" d="M540 28C257.12 28 28 257.12 28 540C28 766.56 174.56 957.92 378.08 1025.76C403.68 1030.24 413.28 1014.88 413.28 1001.44C413.28 989.28 412.64 948.96 412.64 906.08C284 929.76 250.72 874.72 240.48 845.92C234.72 831.2 209.76 785.76 188 773.6C170.08 764 144.48 740.32 187.36 739.68C227.68 739.04 256.48 776.8 266.08 792.16C312.16 869.6 385.76 847.84 415.2 834.4C419.68 801.12 433.12 778.72 447.84 765.92C333.92 753.12 214.88 708.96 214.88 513.12C214.88 457.44 234.72 411.36 267.36 375.52C262.24 362.72 244.32 310.24 272.48 239.84C272.48 239.84 315.36 226.4 413.28 292.32C454.24 280.8 497.76 275.04 541.28 275.04C584.8 275.04 628.32 280.8 669.28 292.32C767.2 225.76 810.08 239.84 810.08 239.84C838.24 310.24 820.32 362.72 815.2 375.52C847.84 411.36 867.68 456.8 867.68 513.12C867.68 709.6 748 753.12 634.08 765.92C652.64 781.92 668.64 812.64 668.64 860.64C668.64 929.12 668 984.16 668 1001.44C668 1014.88 677.6 1030.88 703.2 1025.76C905.44 957.92 1052 765.92 1052 540C1052 257.12 822.88 28 540 28Z" fill="#1B1F23"/>
+                <path d="M977.681 732.375H933.625V593.833C933.625 578.594 921.156 566.125 905.917 566.125H795.083C779.844 566.125 767.375 578.594 767.375 593.833V732.375H723.319C698.658 732.375 686.19 762.3 703.646 779.756L830.827 906.938C841.633 917.744 859.09 917.744 869.896 906.938L997.077 779.756C1014.53 762.3 1002.34 732.375 977.681 732.375ZM656.542 1009.46C656.542 1024.7 669.01 1037.17 684.25 1037.17H1016.75C1031.99 1037.17 1044.46 1024.7 1044.46 1009.46C1044.46 994.219 1031.99 981.75 1016.75 981.75H684.25C669.01 981.75 656.542 994.219 656.542 1009.46Z" fill="#00FF6F"/>
+              </g>
+              <defs>
+                <clipPath id="brand-clip">
+                  <rect width="1024" height="1024" fill="white" transform="translate(28 28)"/>
+                </clipPath>
+              </defs>
+            </svg>
           <div>
             GitHub Download Button
             <div className="brand-meta">public beta</div>
           </div>
         </div>
         <div className="topbar-right">
-          <a href="https://docs.github.com/en/repositories/working-with-files/using-files/downloading-source-code-archives"
-             target="_blank" rel="noopener">
+          <button onClick={() => setShowHowItWorks(true)}>
             <Icon.Question />
             <span className="link-label">How it works</span>
-          </a>
+          </button>
           <span className="status-pill">
             <span className="dot" />
             github api: ok
@@ -448,9 +457,13 @@ function App() {
       </main>
 
       <footer className="footer">
-        <span>GitHub Download Button — for people who don't want to learn Git.</span>
-        <span>built on github's public api · no login required</span>
+        <span>GitHub Download Button, for people who don't want to learn Git.</span>
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>built on github's public api · no login required · by <a href="https://orunto.dev" target="_blank" rel="noopener" style={{ display: 'inline-flex', alignItems: 'center', gap: 5, marginLeft: 8 }}><img src="orunto.png" alt="" aria-hidden="true" style={{ width: 14, height: 14, objectFit: 'contain' }} />Orunto Eniola</a></span>
       </footer>
+
+      {showHowItWorks && (
+        <HowItWorksModal onClose={() => setShowHowItWorks(false)} />
+      )}
 
       {toast && (
         <div className="toast">
@@ -478,7 +491,7 @@ function IdleView({ url, setUrl, inputRef, canSubmit, onSubmit, recent, onPickRe
         <p className="subhead">
           Skip the <span className="mono">clone</span>, the <span className="mono">fork</span>, the{' '}
           <span className="mono">install gh</span>. Drop the URL below and we'll fetch what's
-          inside — plus the README so you know what to do next.
+          inside. Plus the README, so you know what to do next.
         </p>
       </section>
 
@@ -545,7 +558,7 @@ function LoadingView({ url, step }) {
         <div className="eyebrow">
           <span className="mono">fetching {url}</span>
         </div>
-        <h1 className="headline">Hold on — looking at this repo…</h1>
+        <h1 className="headline">Hold on. Looking at this repo…</h1>
       </section>
 
       <div className="loading-wrap fade-in">
@@ -569,7 +582,7 @@ function ErrorView({ url, setUrl, inputRef, canSubmit, onSubmit, error, onReset 
     <>
       <section className="hero fade-in">
         <h1 className="headline">That didn't work.</h1>
-        <p className="subhead">No worries — try a different URL, or one of the examples below.</p>
+        <p className="subhead">No worries. Try a different URL, or one of the examples below.</p>
       </section>
 
       <form className="input-card has-error" onSubmit={onSubmit}>
@@ -888,7 +901,7 @@ function AssetRow({ asset, onDownload, isMatch }) {
 function NoReleasesPanel({ repo, sourceDownloadUrl, htmlUrl, showToast }) {
   const handleDownload = () => {
     window.location.href = sourceDownloadUrl;
-    showToast('Download started — check your Downloads folder');
+    showToast('Download started. Check your Downloads folder');
   };
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
@@ -905,7 +918,7 @@ function NoReleasesPanel({ repo, sourceDownloadUrl, htmlUrl, showToast }) {
           No releases published yet
         </div>
         <p style={{ margin: 0, fontSize: 13, color: 'var(--ink-2)', lineHeight: 1.55 }}>
-          This repo hasn't put out an official release — no installers, no versioned packages.
+          This repo hasn't put out an official release. No installers, no versioned packages.
           That usually means it's still early-stage, or it's a library meant to be used by developers
           rather than downloaded and run directly.
         </p>
@@ -925,7 +938,7 @@ function NoReleasesPanel({ repo, sourceDownloadUrl, htmlUrl, showToast }) {
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
         <p style={{ margin: 0, fontSize: 13, color: 'var(--ink-2)' }}>
-          You can download the raw source code — this is the current state of the project,
+          You can download the raw source code. This is the current state of the project,
           not a packaged release.
         </p>
         <button className="btn btn-accent" onClick={handleDownload} style={{ alignSelf: 'stretch' }}>
@@ -985,7 +998,7 @@ function NoReadme({ repo, htmlUrl }) {
         <Icon.Info />
         <span>
           This repo doesn't have a README. Once you download and unzip it,
-          look inside the folder — there may be a <span className="mono" style={{ fontSize: 12 }}>CONTRIBUTING.md</span>,
+          look inside the folder. There may be a <span className="mono" style={{ fontSize: 12 }}>CONTRIBUTING.md</span>,
           a <span className="mono" style={{ fontSize: 12 }}>docs/</span> folder,
           or comments in the code explaining what to do next.
         </span>
@@ -994,6 +1007,75 @@ function NoReadme({ repo, htmlUrl }) {
          style={{ color: 'var(--accent)', fontSize: 13, display: 'inline-flex', alignItems: 'center', gap: 6 }}>
         <Icon.ExternalLink /> Browse the repository on GitHub
       </a>
+    </div>
+  );
+}
+
+// ── How it works modal ────────────────────────────────────────────────────
+function HowItWorksModal({ onClose }) {
+  useEffect(() => {
+    const onKey = (e) => { if (e.key === 'Escape') onClose(); };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [onClose]);
+
+  const steps = [
+    {
+      title: "Paste the link",
+      detail: "Copy the link from your browser and paste it in the box. It'll look something like github.com/someone/someapp.",
+    },
+    {
+      title: "We check what's available",
+      detail: "We look up whether the app has any files ready to download, like an installer or a .exe.",
+    },
+    {
+      title: "We find the right file for you",
+      detail: "We detect whether you're on Windows, Mac, or Linux and put the right download at the top.",
+    },
+    {
+      title: "Hit Download. Done.",
+      detail: "The file goes straight to your Downloads folder, just like any other download from the web.",
+    },
+  ];
+
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-labelledby="modal-title">
+        <div className="modal-header">
+          <span className="modal-title" id="modal-title">How it works</span>
+          <button className="modal-close" onClick={onClose} aria-label="Close">×</button>
+        </div>
+        <div className="modal-body">
+          <p style={{ margin: 0, fontSize: 14, color: 'var(--ink-2)', lineHeight: 1.6 }}>
+            Someone sent you a GitHub link and you just want to download the app? That's exactly what this is for.
+          </p>
+          <ol className="steps">
+            {steps.map((s, i) => (
+              <li key={i} className="step">
+                <span className="step-num">{i + 1}</span>
+                <div className="step-body">
+                  <span className="step-title">{s.title}</span>
+                  <span className="step-detail">{s.detail}</span>
+                </div>
+              </li>
+            ))}
+          </ol>
+          <div style={{
+            padding: '12px 14px',
+            background: 'var(--accent-soft)',
+            border: '1px solid #d4dfeb',
+            borderLeft: '3px solid var(--accent)',
+            borderRadius: 'var(--radius-sm)',
+            fontSize: 13,
+            color: 'var(--ink-2)',
+            lineHeight: 1.55,
+          }}>
+            <strong style={{ color: 'var(--accent-ink)', display: 'block', marginBottom: 4 }}>What do Simple and Technical mean?</strong>
+            <strong style={{ color: 'var(--good)' }}>Simple</strong> means there's a ready-to-run file. Just download and open it like any other app.{' '}
+            <strong style={{ color: 'var(--warn)' }}>Technical</strong> means no installer exists yet. It's code only, and you'd need a developer to set it up.
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

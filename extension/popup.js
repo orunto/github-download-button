@@ -44,7 +44,7 @@ function renderSearch(msg) {
     const raw = input.value.trim();
     if (!raw) return;
     const parsed = parseGithubInput(raw);
-    if (!parsed) { renderSearch('Invalid URL — try owner/repo or a full GitHub URL.'); return; }
+    if (!parsed) { renderSearch('Invalid URL! Try owner/repo or a full GitHub URL.'); return; }
     renderLoading(parsed.owner, parsed.repo);
     doFetch(parsed.owner, parsed.repo);
   }

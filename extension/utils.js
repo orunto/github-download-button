@@ -83,7 +83,7 @@ function computeRating(enrichedReleases) {
     r.assets && r.assets.some(a => a.os === 'windows' || a.os === 'mac' || a.os === 'linux')
   );
   return hasRunnable
-    ? { tier: 'simple',    label: 'Simple',    detail: 'Download and run — no setup needed' }
+    ? { tier: 'simple',    label: 'Simple',    detail: 'Download and run · No setup needed' }
     : { tier: 'technical', label: 'Technical', detail: 'No runnable releases · coding knowledge required' };
 }
 

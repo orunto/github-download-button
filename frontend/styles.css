@@ -69,23 +69,9 @@ body {
 }
 
 .brand-mark {
-  width: 26px;
-  height: 26px;
-  border-radius: 7px;
-  background: var(--ink);
-  color: var(--bg);
-  display: grid;
-  place-items: center;
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 13px;
-  font-weight: 600;
-  position: relative;
-  overflow: hidden;
-}
-.brand-mark::after {
-  content: '';
-  position: absolute; inset: 0;
-  background: linear-gradient(135deg, transparent 40%, rgba(255,255,255,.08) 50%, transparent 60%);
+  width: 28px;
+  height: 28px;
+  flex-shrink: 0;
 }
 
 .brand-meta {
@@ -102,14 +88,21 @@ body {
   font-size: 13px;
   color: var(--ink-2);
 }
-.topbar-right a {
+.topbar-right a,
+.topbar-right button {
   color: inherit;
   text-decoration: none;
   display: inline-flex;
   align-items: center;
   gap: 6px;
+  background: none;
+  border: none;
+  font: inherit;
+  cursor: pointer;
+  padding: 0;
 }
-.topbar-right a:hover { color: var(--ink); }
+.topbar-right a:hover,
+.topbar-right button:hover { color: var(--ink); }
 
 .status-pill {
   display: inline-flex;
@@ -835,6 +828,81 @@ h1.headline em {
   gap: 10px;
 }
 .rate-notice a { color: #3a5a7c; }
+
+/* ── How it works modal ──────────────────────────────────────────── */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(26, 29, 35, 0.45);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  animation: fade-in .2s ease;
+}
+
+.modal {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-2);
+  width: 100%;
+  max-width: 480px;
+  max-height: 90vh;
+  overflow-y: auto;
+  animation: modal-in .22s cubic-bezier(.2,.8,.4,1);
+}
+
+.modal-header {
+  padding: 20px var(--pad) 16px;
+  border-bottom: 1px solid var(--line);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.modal-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--ink);
+  letter-spacing: -0.01em;
+}
+
+.modal-close {
+  width: 28px;
+  height: 28px;
+  border: 0;
+  background: transparent;
+  color: var(--ink-3);
+  cursor: pointer;
+  border-radius: 6px;
+  display: grid;
+  place-items: center;
+  font-size: 20px;
+  line-height: 1;
+  transition: background .12s, color .12s;
+  padding: 0;
+}
+.modal-close:hover {
+  background: var(--code-bg);
+  color: var(--ink);
+}
+
+.modal-body {
+  padding: var(--pad);
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+@keyframes modal-in {
+  from { opacity: 0; transform: translateY(12px) scale(.98); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
 
 /* ── Footer ──────────────────────────────────────────────────────── */
 .footer {

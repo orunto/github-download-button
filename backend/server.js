@@ -132,7 +132,7 @@ app.get("/api/repo", async (req, res) => {
     const [repoRes, releasesRes, readmeRes] = await Promise.all([
       ghFetch(`https://api.github.com/repos/${owner}/${repo}`),
       ghFetch(
-        `https://api.github.com/repos/${owner}/${repo}/releases?per_page=5`,
+        `https://api.github.com/repos/${owner}/${repo}/releases?per_page=20`,
       ),
       ghFetch(`https://api.github.com/repos/${owner}/${repo}/readme`),
     ]);
@@ -147,11 +147,16 @@ app.get("/api/repo", async (req, res) => {
     const repoJson = await repoRes.json();
     if (repoJson.private) return res.status(403).json({ kind: "private" });
 
-    // Releases — ignore errors gracefully
+    // Releases — treat a rate-limit on this call the same as the repo call
+    if (releasesRes.status === 403 || releasesRes.status === 429)
+      return res.status(429).json({ kind: "ratelimit" });
+
     let releases = [];
     if (releasesRes.ok) {
       const all = await releasesRes.json();
       releases = all.filter((r) => !r.draft);
+    } else {
+      console.warn(`[api/repo] releases fetch failed: ${releasesRes.status} for ${owner}/${repo}`);
     }
 
     // README — decode base64 content
