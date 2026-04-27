@@ -1,8 +1,15 @@
 {
   "name": "github-download-button",
   "version": "1.0.0",
+  "type": "module",
   "scripts": {
-    "start": "node backend/server.js",
-    "postinstall": "cd backend && npm install"
+    "dev": "bun --watch backend/server.js",
+    "start": "bun backend/server.js",
+    "build": "echo 'No build step required'"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.91.1",
+    "cors": "^2.8.6",
+    "express": "^5.2.1"
   }
 }
