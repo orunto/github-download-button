@@ -14,7 +14,7 @@ function shell(bodyHtml, owner, repo) {
     </div>
     <div class="body">${bodyHtml}</div>
     <div class="footer">
-      <span>repo-grab</span>
+      <span>github-download-button</span>
       ${owner ? `<a href="https://github.com/${owner}/${repo}/releases" target="_blank">releases on github →</a>` : ''}
     </div>`;
 }

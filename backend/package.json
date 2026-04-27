@@ -1,7 +1,7 @@
 {
-  "name": "repo-grab-backend",
+  "name": "github-download-button-backend",
   "version": "1.0.0",
-  "description": "Backend for Repo Grab — proxies GitHub API and generates README summaries via Claude Haiku",
+  "description": "Backend for GitHub Download Button — proxies GitHub API and generates README summaries via Claude Haiku",
   "type": "module",
   "scripts": {
     "start": "node server.js",

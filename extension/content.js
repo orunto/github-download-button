@@ -175,7 +175,7 @@
   // ── Loading state ──────────────────────────────────────────────────────
   panel.innerHTML = `
     <div class="header">
-      <span class="brand">↓ Repo Grab</span>
+      <span class="brand">↓ GitHub Download Button</span>
       <button class="close-btn" title="Dismiss">✕</button>
     </div>
     <div class="body">
@@ -204,7 +204,7 @@
 
       panel.innerHTML = `
         <div class="header">
-          <span class="brand">↓ Repo Grab</span>
+          <span class="brand">↓ GitHub Download Button</span>
           <button class="close-btn" title="Dismiss">✕</button>
         </div>
         <div class="body">
@@ -233,7 +233,7 @@
     .catch(() => {
       panel.innerHTML = `
         <div class="header">
-          <span class="brand">↓ Repo Grab</span>
+          <span class="brand">↓ GitHub Download Button</span>
           <button class="close-btn" title="Dismiss">✕</button>
         </div>
         <div class="body">
@@ -246,7 +246,7 @@
     const srcUrl = `https://github.com/${repoJson.full_name}/archive/refs/heads/${repoJson.default_branch || 'main'}.zip`;
     panel.innerHTML = `
       <div class="header">
-        <span class="brand">↓ Repo Grab</span>
+        <span class="brand">↓ GitHub Download Button</span>
         <button class="close-btn" title="Dismiss">✕</button>
       </div>
       <div class="body">

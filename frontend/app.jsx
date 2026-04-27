@@ -391,7 +391,7 @@ function App() {
         <div className="brand">
           <div className="brand-mark" aria-hidden="true">↓</div>
           <div>
-            Repo Grab
+            GitHub Download Button
             <div className="brand-meta">public beta</div>
           </div>
         </div>
@@ -448,7 +448,7 @@ function App() {
       </main>
 
       <footer className="footer">
-        <span>Repo Grab — for people who don't want to learn Git.</span>
+        <span>GitHub Download Button — for people who don't want to learn Git.</span>
         <span>built on github's public api · no login required</span>
       </footer>
 

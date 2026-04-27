@@ -58,7 +58,7 @@ function extractSummary(md, maxChars = 300) {
 async function ghFetch(url) {
   const headers = {
     Accept: 'application/vnd.github+json',
-    'User-Agent': 'repo-grab/1.0',
+    'User-Agent': 'github-download-button/1.0',
   };
   if (process.env.GITHUB_TOKEN) {
     headers.Authorization = `Bearer ${process.env.GITHUB_TOKEN}`;
@@ -164,7 +164,7 @@ app.get('*', (_req, res) => {
 });
 
 app.listen(PORT, () => {
-  console.log(`Repo Grab running at http://localhost:${PORT}`);
+  console.log(`GitHub Download Button running at http://localhost:${PORT}`);
   if (!process.env.ANTHROPIC_API_KEY) {
     console.warn('[warn] ANTHROPIC_API_KEY not set — summaries will be skipped');
   }
