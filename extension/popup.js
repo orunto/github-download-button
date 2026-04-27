@@ -55,9 +55,9 @@ function renderSearch(msg) {
 }
 
 function renderResult(owner, repo, data) {
-  const { repoJson, releases } = data;
-  const enriched = enrichReleases(releases, repoJson.full_name); // utils.js
-  const rating   = computeRating(enriched);                      // utils.js
+  const { repoJson, releases, appRating } = data;
+  const enriched = enrichReleases(releases, repoJson.full_name);        // utils.js
+  const rating   = appRating || computeRating(enriched);                // utils.js
   const latest   = enriched[0];
 
   if (!latest) {
@@ -76,7 +76,7 @@ function renderResult(owner, repo, data) {
   setApp(shell(`
     <div class="repo-line">
       <span class="repo-name">${owner}/${repo}</span>
-      <span class="rating ${rating.tier}">${rating.tier === 'simple' ? '✓' : '⚙'} ${rating.label}</span>
+      <span class="rating ${rating.tier}">${rating.tier === 'simple' ? '✓' : rating.tier === 'highly-technical' ? '⚠' : '⚙'} ${rating.label}</span>
     </div>
     <div class="rating-detail">${rating.detail}</div>
     <div class="divider"></div>

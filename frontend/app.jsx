@@ -93,16 +93,39 @@ function extractSummary(md, maxChars = 300) {
   return full.length > maxChars ? full.slice(0, maxChars).replace(/\s+\S*$/, '') + '…' : full;
 }
 
-// ── Repo complexity rating ────────────────────────────────────────────────
+// ── Repo complexity rating (asset-only fallback for file:// mode) ─────────
+// The backend runs a full README analysis; this runs only when calling GitHub
+// directly without the backend (file:// protocol).
 function computeRating(releases) {
   if (!releases || releases.length === 0)
-    return { tier: 'technical', label: 'Technical', detail: 'Source code only. Setup required.' };
-  const hasRunnable = releases.some(r =>
+    return { tier: 'highly-technical', label: 'Highly Technical', detail: 'No releases. Developer setup required.' };
+  const hasInstaller = releases.some(r =>
     r.assets && r.assets.some(a => a.os === 'windows' || a.os === 'mac' || a.os === 'linux')
   );
-  return hasRunnable
-    ? { tier: 'simple',    label: 'Simple',    detail: 'Download and run. No setup needed.' }
-    : { tier: 'technical', label: 'Technical', detail: 'No runnable releases. Coding knowledge required.' };
+  if (hasInstaller)
+    return { tier: 'simple',    label: 'Simple',    detail: 'Download and run. No setup needed.' };
+  return   { tier: 'technical', label: 'Technical', detail: 'No platform installer. Some setup required.' };
+}
+
+// Map tier to display color (used in multiple places)
+function tierColor(tier) {
+  if (tier === 'simple')           return 'var(--good)';
+  if (tier === 'highly-technical') return 'var(--danger)';
+  return 'var(--warn)';
+}
+
+// Map tier to icon
+function tierIcon(tier) {
+  if (tier === 'simple')           return '✓';
+  if (tier === 'highly-technical') return '⚠';
+  return '⚙';
+}
+
+// Map tier to rating badge background/border colors
+function tierBadgeStyle(tier) {
+  if (tier === 'simple')           return { bg: '#edf7f0', border: '#b8dfc4' };
+  if (tier === 'highly-technical') return { bg: '#fdf1f0', border: '#f0ccc9' };
+  return { bg: '#fdf6ee', border: '#ecd9bd' };
 }
 
 // ── File size formatter for release assets ────────────────────────────────
@@ -300,7 +323,7 @@ function App() {
     }, 500);
 
     try {
-      const { repoJson, releases, readmeSummary, summaryIsAi } = await fetchRepoData(p.owner, p.repo);
+      const { repoJson, releases, readmeSummary, summaryIsAi, appRating } = await fetchRepoData(p.owner, p.repo);
       clearInterval(stepTimer);
       setLoadingStep(LOADING_STEPS.length - 1);
 
@@ -349,7 +372,7 @@ function App() {
         sourceDownloadUrl: `https://github.com/${repoJson.owner.login}/${repoJson.name}/archive/refs/heads/${branch}.zip`,
         htmlUrl: repoJson.html_url,
         releases: enrichedReleases,
-        rating: computeRating(enrichedReleases),
+        rating: appRating || computeRating(enrichedReleases),
       });
       console.log('[repo-grab] releases:', enrichedReleases);
       setStage('loaded');
@@ -647,10 +670,7 @@ function LoadedView({ data, onReset, showToast }) {
           }} />
           <span>
             found it ·{' '}
-            <span style={{
-              fontWeight: 600,
-              color: rating.tier === 'simple' ? 'var(--good)' : 'var(--warn)',
-            }}>
+            <span style={{ fontWeight: 600, color: tierColor(rating.tier) }}>
               {rating.label}
             </span>
             {hasReleases ? ` · ${releases.length} release${releases.length > 1 ? 's' : ''}` : ''}
@@ -699,23 +719,28 @@ function LoadedView({ data, onReset, showToast }) {
               <span className="stat"><Icon.Book /> {size}</span>
             </div>
 
-            <div style={{
-              display: 'flex', alignItems: 'center', gap: 8,
-              padding: '8px 12px',
-              background: rating.tier === 'simple' ? '#edf7f0' : '#fdf6ee',
-              border: `1px solid ${rating.tier === 'simple' ? '#b8dfc4' : '#ecd9bd'}`,
-              borderRadius: 'var(--radius-sm)',
-            }}>
-              <span style={{
-                fontSize: 12, fontWeight: 700,
-                color: rating.tier === 'simple' ? 'var(--good)' : 'var(--warn)',
-                letterSpacing: '0.02em',
-              }}>
-                {rating.tier === 'simple' ? '✓' : '⚙'} {rating.label}
-              </span>
-              <span style={{ fontSize: 12, color: 'var(--ink-3)' }}>·</span>
-              <span style={{ fontSize: 12, color: 'var(--ink-2)' }}>{rating.detail}</span>
-            </div>
+            {(() => {
+              const { bg, border } = tierBadgeStyle(rating.tier);
+              return (
+                <div style={{
+                  display: 'flex', alignItems: 'center', gap: 8,
+                  padding: '8px 12px',
+                  background: bg,
+                  border: `1px solid ${border}`,
+                  borderRadius: 'var(--radius-sm)',
+                }}>
+                  <span style={{
+                    fontSize: 12, fontWeight: 700,
+                    color: tierColor(rating.tier),
+                    letterSpacing: '0.02em',
+                  }}>
+                    {tierIcon(rating.tier)} {rating.label}
+                  </span>
+                  <span style={{ fontSize: 12, color: 'var(--ink-3)' }}>·</span>
+                  <span style={{ fontSize: 12, color: 'var(--ink-2)' }}>{rating.detail}</span>
+                </div>
+              );
+            })()}
 
             {hasReleases ? (
               <ReleasePanel releases={releases} showToast={showToast} />
@@ -1070,9 +1095,10 @@ function HowItWorksModal({ onClose }) {
             color: 'var(--ink-2)',
             lineHeight: 1.55,
           }}>
-            <strong style={{ color: 'var(--accent-ink)', display: 'block', marginBottom: 4 }}>What do Simple and Technical mean?</strong>
-            <strong style={{ color: 'var(--good)' }}>Simple</strong> means there's a ready-to-run file. Just download and open it like any other app.{' '}
-            <strong style={{ color: 'var(--warn)' }}>Technical</strong> means no installer exists yet. It's code only, and you'd need a developer to set it up.
+            <strong style={{ color: 'var(--accent-ink)', display: 'block', marginBottom: 4 }}>What do the ratings mean?</strong>
+            <strong style={{ color: 'var(--good)' }}>Simple</strong> means there's a ready-to-run installer. Download and open it like any other app.{' '}
+            <strong style={{ color: 'var(--warn)' }}>Technical</strong> means releases exist but need extra setup, like having Java installed.{' '}
+            <strong style={{ color: 'var(--danger)' }}>Highly Technical</strong> means you need a terminal to run it. This is built for developers, not everyday users.
           </div>
         </div>
       </div>

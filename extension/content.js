@@ -51,8 +51,9 @@
       padding: 2px 8px; border-radius: 999px;
       font-size: 10.5px; font-weight: 700; letter-spacing: 0.02em;
     }
-    .rating.simple    { background: #e8f4ec; color: #2d6a3a; }
-    .rating.technical { background: #fdf6ee; color: #7a4a1e; }
+    .rating.simple            { background: #e8f4ec; color: #2d6a3a; }
+    .rating.technical         { background: #fdf6ee; color: #7a4a1e; }
+    .rating.highly-technical  { background: #fdf1f0; color: #8b2020; }
     .rating-detail { font-size: 11.5px; color: #8a8e98; }
 
     .section-label {
@@ -187,9 +188,9 @@
 
   // ── Fetch & render ─────────────────────────────────────────────────────
   fetchRepo(owner, repo) // from utils.js
-    .then(({ repoJson, releases }) => {
+    .then(({ repoJson, releases, appRating }) => {
       const enriched = enrichReleases(releases, repoJson.full_name);
-      const rating   = computeRating(enriched);
+      const rating   = appRating || computeRating(enriched);
       const latest   = enriched[0];
 
       if (!latest) { renderNoReleases(repoJson, rating); return; }
@@ -210,7 +211,7 @@
         <div class="body">
           <div class="repo-line">
             <span class="repo-name">${owner}/${repo}</span>
-            <span class="rating ${rating.tier}">${rating.tier === 'simple' ? '✓' : '⚙'} ${rating.label}</span>
+            <span class="rating ${rating.tier}">${rating.tier === 'simple' ? '✓' : rating.tier === 'highly-technical' ? '⚠' : '⚙'} ${rating.label}</span>
           </div>
           <div class="rating-detail">${rating.detail}</div>
           <div class="divider"></div>

@@ -70,8 +70,9 @@ body {
   padding: 3px 9px; border-radius: 999px;
   font-size: 11px; font-weight: 700; letter-spacing: 0.02em;
 }
-.rating.simple    { background: #e8f4ec; color: #2d6a3a; }
-.rating.technical { background: #fdf6ee; color: #7a4a1e; }
+.rating.simple            { background: #e8f4ec; color: #2d6a3a; }
+.rating.technical         { background: #fdf6ee; color: #7a4a1e; }
+.rating.highly-technical  { background: #fdf1f0; color: #8b2020; }
 .rating-detail { font-size: 11.5px; color: #8a8e98; }
 
 /* ── Section label ── */

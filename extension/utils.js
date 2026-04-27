@@ -76,15 +76,16 @@ function enrichReleases(releases, repoFullName) {
   });
 }
 
+// Asset-only fallback rating used when the backend appRating is not available.
 function computeRating(enrichedReleases) {
   if (!enrichedReleases || enrichedReleases.length === 0)
-    return { tier: 'technical', label: 'Technical', detail: 'Source code only · setup required' };
-  const hasRunnable = enrichedReleases.some(r =>
+    return { tier: 'highly-technical', label: 'Highly Technical', detail: 'No releases. Developer setup required.' };
+  const hasInstaller = enrichedReleases.some(r =>
     r.assets && r.assets.some(a => a.os === 'windows' || a.os === 'mac' || a.os === 'linux')
   );
-  return hasRunnable
-    ? { tier: 'simple',    label: 'Simple',    detail: 'Download and run · No setup needed' }
-    : { tier: 'technical', label: 'Technical', detail: 'No runnable releases · coding knowledge required' };
+  if (hasInstaller)
+    return { tier: 'simple',    label: 'Simple',    detail: 'Download and run. No setup needed.' };
+  return   { tier: 'technical', label: 'Technical', detail: 'No platform installer. Some setup required.' };
 }
 
 async function fetchRepo(owner, repo) {
