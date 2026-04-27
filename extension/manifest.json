@@ -1,0 +1,22 @@
+{
+  "manifest_version": 3,
+  "name": "Repo Grab",
+  "version": "1.0.0",
+  "description": "Instant, OS-filtered download options for any GitHub repo.",
+  "permissions": ["storage", "activeTab", "tabs"],
+  "host_permissions": [
+    "https://github.com/*",
+    "http://localhost:3000/*"
+  ],
+  "content_scripts": [
+    {
+      "matches": ["https://github.com/*/*"],
+      "js": ["utils.js", "content.js"],
+      "run_at": "document_idle"
+    }
+  ],
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "Repo Grab"
+  }
+}
