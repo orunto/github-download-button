@@ -24,7 +24,7 @@ const LANG_COLORS = {
 
 // ── Example repos ─────────────────────────────────────────────────────────
 const EXAMPLES = [
-  'sindresorhus/awesome',
+  'Tyrrrz/YoutubeDownloader',
   'vercel/next.js',
   'facebook/react',
 ];
