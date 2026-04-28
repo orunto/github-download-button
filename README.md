@@ -17,10 +17,10 @@
 
 <p align="center">
   <img src="https://img.shields.io/badge/Node.js-18%2B-339933?logo=node.js&logoColor=white" alt="Node.js" />
-  <img src="https://img.shields.io/badge/Express-5-black?logo=express&logoColor=white" alt="Express" />
+  <img src="https://img.shields.io/badge/Express-4-black?logo=express&logoColor=white" alt="Express" />
   <img src="https://img.shields.io/badge/React-18-61DAFB?logo=react&logoColor=black" alt="React" />
+  <img src="https://img.shields.io/badge/Vite-6-646CFF?logo=vite&logoColor=white" alt="Vite" />
   <img src="https://img.shields.io/badge/Chrome%20Extension-MV3-4285F4?logo=googlechrome&logoColor=white" alt="Chrome MV3" />
-  <img src="https://img.shields.io/badge/Deployed%20on-Vercel-black?logo=vercel&logoColor=white" alt="Vercel" />
 </p>
 
 ---
@@ -55,7 +55,7 @@ Browser / Extension
   Express backend
        |
        |-- GitHub API: repo metadata
-       |-- GitHub API: releases (up to 20)
+       |-- GitHub API: releases (up to 5)
        |-- GitHub API: README (base64 decoded)
        |
        |-- analyzeReadmeComplexity()
@@ -69,7 +69,7 @@ Browser / Extension
   JSON response: { repoJson, releases, readmeSummary, appRating }
        |
        v
-  Frontend: OS-filtered asset list, rating badge, README summary
+  React frontend: OS-filtered asset list, rating badge, README summary
 ```
 
 ---
@@ -78,12 +78,11 @@ Browser / Extension
 
 | Layer | Technology |
 |---|---|
-| Frontend | React 18 via CDN, no build step, vanilla CSS |
-| Backend | Node.js, Express 5 |
+| Frontend | React 18, Vite 6, vanilla CSS |
+| Backend | Node.js 18+, Express 4 |
 | GitHub data | GitHub REST API v3, public endpoints |
 | Extension | Chrome Manifest V3, shadow DOM, no build step |
-| Deployment | Vercel (serverless, frontend + backend in one repo) |
-| Runtime | Bun (local dev), Node.js (production) |
+| Deployment | Railway, Render, or Fly.io |
 
 ---
 
@@ -91,46 +90,63 @@ Browser / Extension
 
 ```
 github-download-button/
-  backend/
-    server.js        Express server, GitHub API proxy, README analysis and plain-text extraction
-  frontend/
-    index.html       Entry point
-    app.jsx          React app (CDN-compiled, no build step)
-    styles.css       All styles
-    orunto.png       Author mark
+  web-app/
+    server.js          Express server, GitHub API proxy, README analysis
+    vite.config.js     Vite config, proxies /api to Express in dev
+    package.json
+    client/
+      index.html       Vite entry point
+      public/          Static assets (logo, author mark)
+      src/
+        main.jsx       ReactDOM entry
+        App.jsx        Main React application
+        icons.jsx      SVG icon components
+        styles.css     All styles
   extension/
-    manifest.json    Chrome MV3 manifest
-    utils.js         Shared: detectOS, labelAsset, enrichReleases, computeRating, fetchRepo
-    content.js       Injected panel on GitHub repo pages
-    popup.js         Extension popup logic
-    popup.html       Popup shell
-    popup.css        Popup styles
-  vercel.json        Routes /api/* to backend, everything else to frontend
-  package.json       Root scripts using Bun
+    manifest.json      Chrome MV3 manifest
+    utils.js           Shared: detectOS, labelAsset, enrichReleases, computeRating, fetchRepo
+    content.js         Injected panel on GitHub repo pages
+    popup.js           Extension popup logic
+    popup.html         Popup shell
+    popup.css          Popup styles
 ```
 
 ---
 
 ## Running locally
 
-**Prerequisites:** Node.js 18+ or Bun. A GitHub personal access token is optional but raises the rate limit from 60 to 5,000 requests per hour.
+**Prerequisites:** Node.js 18+. A GitHub personal access token is optional but raises the rate limit from 60 to 5,000 requests per hour.
 
 ```bash
-# Clone the repo
 git clone https://github.com/madebyorunto/github-download-button.git
-cd github-download-button
+cd github-download-button/web-app
 
-# Install dependencies
-bun install
+npm install
 
-# Set environment variables
-export GITHUB_TOKEN=your_token_here   # optional, raises rate limit from 60 to 5000 req/hr
+# Copy and fill in environment variables
+cp .env.example .env.local
 
-# Start the dev server (restarts on file changes)
-bun dev
+npm run dev
 ```
 
-The app will be available at `http://localhost:3000`. The frontend is served statically from the backend, so there is no separate frontend server.
+This starts both the Express server (port 3000) and the Vite dev server (port 5173) in parallel. Open `http://localhost:5173`. The Vite dev server proxies `/api` requests to Express, so both hot module replacement and the backend work at the same time.
+
+To build and serve the production bundle locally:
+
+```bash
+npm run build
+npm start        # serves client/dist from Express on port 3000
+```
+
+---
+
+## Deploying
+
+The web app is a standard Node.js server. Any platform that runs `npm run build && npm start` works.
+
+**Railway / Render:** Connect the repo, set the root directory to `web-app/`, add `GITHUB_TOKEN` and `ANTHROPIC_API_KEY` as environment variables. Both platforms detect the `start` script automatically.
+
+**Fly.io:** Same, using `fly launch` inside `web-app/`.
 
 ---
 
@@ -157,8 +173,6 @@ To point the extension at a deployed backend, update `RG_BACKEND` at the top of 
 ## Contributing
 
 Pull requests are welcome. A few things to keep in mind before opening one.
-
-**Code style.** The frontend has no build step by design. Keep it that way. No bundlers, no transpilers, no TypeScript. The extension follows the same rule. The backend uses ES modules (`import`/`export`).
 
 **Branching.** Branch off `master`. Name your branch after what it does: `fix/asset-detection`, `feat/firefox-extension`, `refactor/rating-algorithm`.
 

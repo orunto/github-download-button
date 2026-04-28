@@ -1,4 +1,3 @@
-// icons.jsx — small inline SVGs used across the app
 const Icon = {
   Github: () => (
     <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
@@ -87,4 +86,4 @@ const Icon = {
   ),
 };
 
-window.Icon = Icon;
+export default Icon;

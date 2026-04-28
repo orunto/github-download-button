@@ -1,7 +1,7 @@
-// app.jsx — Repo Grab main application
-const { useState, useEffect, useRef, useMemo, useCallback } = React;
+import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
+import Icon from './icons.jsx';
 
-// ── Detect user OS ───────────────────────────────────────────────────────
+// ── Detect user OS ─────────────────────────────────────────────────────────
 function detectOS() {
   const ua = navigator.userAgent;
   if (/Windows/i.test(ua)) return 'windows';
@@ -10,9 +10,8 @@ function detectOS() {
   return null;
 }
 const USER_OS = detectOS();
-console.log('[repo-grab] detected OS:', USER_OS, '|', navigator.userAgent);
 
-// ── Language color map (GitHub's standard palette) ────────────────────────
+// ── Language color map (GitHub's standard palette) ─────────────────────────
 const LANG_COLORS = {
   JavaScript: '#f1e05a', TypeScript: '#3178c6', Python: '#3572A5',
   Java: '#b07219', 'C++': '#f34b7d', C: '#555555', 'C#': '#178600',
@@ -22,17 +21,14 @@ const LANG_COLORS = {
   Markdown: '#5a8fbf', Lua: '#000080', R: '#198CE7', MATLAB: '#e16737',
 };
 
-// ── Example repos ─────────────────────────────────────────────────────────
+// ── Example repos ──────────────────────────────────────────────────────────
 const EXAMPLES = [
   'Tyrrrz/YoutubeDownloader',
   'vercel/next.js',
   'facebook/react',
 ];
 
-// When served via the backend (not file://), use the API for AI summaries.
-const IS_SERVED = window.location.protocol !== 'file:';
-
-// ── URL parsing ───────────────────────────────────────────────────────────
+// ── URL parsing ────────────────────────────────────────────────────────────
 function parseRepoUrl(raw) {
   const v = (raw || '').trim();
   if (!v) return null;
@@ -45,57 +41,27 @@ function parseRepoUrl(raw) {
   return { owner: m[1], repo: m[2], ref: m[3] };
 }
 
-// ── Format file size ──────────────────────────────────────────────────────
+// ── Format helpers ─────────────────────────────────────────────────────────
 function formatSize(kb) {
   if (!kb) return '—';
   if (kb < 1024) return `${kb} KB`;
   return `${(kb / 1024).toFixed(1)} MB`;
 }
 
-// ── Format star count ─────────────────────────────────────────────────────
 function formatStars(n) {
   if (!n) return '0';
   if (n >= 1000) return `${(n / 1000).toFixed(n >= 10000 ? 0 : 1)}k`;
   return String(n);
 }
 
-// ── Extract a plain-text summary from raw markdown (fallback for file:// mode)
-function extractSummary(md, maxChars = 300) {
-  if (!md) return '';
-  let text = md.replace(/```[\s\S]*?```/g, '');
-  const lines = text.split('\n');
-  const prose = [];
-  for (const raw of lines) {
-    const line = raw.trim();
-    if (!line) continue;
-    if (/^#/.test(line)) continue;
-    if (/^!\[/.test(line)) continue;
-    if (/^\[!\[/.test(line)) continue;
-    if (/^<!--/.test(line)) continue;
-    if (/^</.test(line)) continue;
-    if (/^[-*]{3,}$/.test(line)) continue;
-    if (/^\|/.test(line)) continue;
-    if (line.length < 20) continue;
-    const clean = line
-      .replace(/!\[[^\]]*\]\([^)]*\)/g, '')
-      .replace(/\[([^\]]+)\]\([^)]*\)/g, '$1')
-      .replace(/\*\*(.+?)\*\*/g, '$1')
-      .replace(/\*(.+?)\*/g, '$1')
-      .replace(/`([^`]+)`/g, '$1')
-      .replace(/~~(.+?)~~/g, '$1')
-      .trim();
-    if (clean.length < 20) continue;
-    prose.push(clean);
-    if (prose.join(' ').length >= maxChars) break;
-  }
-  const full = prose.join(' ');
-  if (!full) return '';
-  return full.length > maxChars ? full.slice(0, maxChars).replace(/\s+\S*$/, '') + '…' : full;
+function formatBytes(bytes) {
+  if (!bytes) return '—';
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
-// ── Repo complexity rating (asset-only fallback for file:// mode) ─────────
-// The backend runs a full README analysis; this runs only when calling GitHub
-// directly without the backend (file:// protocol).
+// ── Repo complexity rating (fallback when API doesn't return one) ───────────
 function computeRating(releases) {
   if (!releases || releases.length === 0)
     return { tier: 'highly-technical', label: 'Highly Technical', detail: 'No releases. Developer setup required.' };
@@ -107,40 +73,28 @@ function computeRating(releases) {
   return   { tier: 'technical', label: 'Technical', detail: 'No platform installer. Some setup required.' };
 }
 
-// Map tier to display color (used in multiple places)
 function tierColor(tier) {
   if (tier === 'simple')           return 'var(--good)';
   if (tier === 'highly-technical') return 'var(--danger)';
   return 'var(--warn)';
 }
 
-// Map tier to icon
 function tierIcon(tier) {
   if (tier === 'simple')           return '✓';
   if (tier === 'highly-technical') return '⚠';
   return '⚙';
 }
 
-// Map tier to rating badge background/border colors
 function tierBadgeStyle(tier) {
   if (tier === 'simple')           return { bg: '#edf7f0', border: '#b8dfc4' };
   if (tier === 'highly-technical') return { bg: '#fdf1f0', border: '#f0ccc9' };
   return { bg: '#fdf6ee', border: '#ecd9bd' };
 }
 
-// ── File size formatter for release assets ────────────────────────────────
-function formatBytes(bytes) {
-  if (!bytes) return '—';
-  if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-}
-
-// ── Guess a human label for an asset filename ─────────────────────────────
+// ── Guess a human label for an asset filename ──────────────────────────────
 function labelAsset(name) {
   const n = name.toLowerCase();
 
-  // Extension-based (unambiguous)
   if (n.endsWith('.exe') || n.includes('setup') || n.includes('installer'))
     return { label: 'Windows installer', os: 'windows' };
   if (n.endsWith('.msi'))
@@ -156,7 +110,6 @@ function labelAsset(name) {
   if (n.endsWith('.appimage'))
     return { label: 'Linux AppImage', os: 'linux' };
 
-  // Platform token in filename
   const isWindows = /[.\-_](win(dows)?|win(32|64))[.\-_]/.test(n) || n.includes('windows');
   const isMac     = /[.\-_](osx|macos|darwin)[.\-_]/.test(n) || n.includes('darwin') || n.includes('macos');
   const isLinux   = /[.\-_]linux[.\-_]/.test(n) || n.includes('linux');
@@ -171,7 +124,6 @@ function labelAsset(name) {
   if (isMac)     return { label: `macOS${arch}`, os: 'mac' };
   if (isLinux)   return { label: `Linux${arch}`, os: 'linux' };
 
-  // Fallback by extension
   if (n.endsWith('.zip'))                          return { label: 'ZIP archive', os: 'generic' };
   if (n.endsWith('.tar.gz') || n.endsWith('.tgz')) return { label: 'TAR archive', os: 'generic' };
   if (n === 'source code (zip)' || n === 'source code (tar.gz)')
@@ -179,65 +131,23 @@ function labelAsset(name) {
   return { label: name, os: 'generic' };
 }
 
-// ── GitHub API helpers (file:// fallback only) ────────────────────────────
-async function fetchRepoDataDirect(owner, repo) {
-  const headers = { Accept: 'application/vnd.github+json' };
-
-  const [repoRes, releasesRes, readmeRes] = await Promise.all([
-    fetch(`https://api.github.com/repos/${owner}/${repo}`, { headers }),
-    fetch(`https://api.github.com/repos/${owner}/${repo}/releases?per_page=5`, { headers }),
-    fetch(`https://api.github.com/repos/${owner}/${repo}/readme`, { headers }),
-  ]);
-
-  if (repoRes.status === 404) throw { kind: 'notfound' };
-  if (repoRes.status === 403 || repoRes.status === 429) throw { kind: 'ratelimit' };
-  if (!repoRes.ok) throw { kind: 'error', status: repoRes.status };
-
-  const repoJson = await repoRes.json();
-  if (repoJson.private) throw { kind: 'private' };
-
-  let releases = [];
-  if (releasesRes.ok) {
-    const all = await releasesRes.json();
-    releases = all.filter((r) => !r.draft);
-  }
-
-  let readmeText = null;
-  if (readmeRes.ok) {
-    const readmeJson = await readmeRes.json();
-    try {
-      readmeText = atob(readmeJson.content.replace(/\n/g, ''));
-    } catch {}
-  }
-
-  return { repoJson, releases, readmeSummary: readmeText ? extractSummary(readmeText) : null, summaryIsAi: false };
-}
-
-// ── Backend API (served mode) ─────────────────────────────────────────────
-async function fetchRepoDataApi(owner, repo) {
+// ── API fetch ──────────────────────────────────────────────────────────────
+async function fetchRepoData(owner, repo) {
   const res = await fetch(
     `/api/repo?owner=${encodeURIComponent(owner)}&repo=${encodeURIComponent(repo)}`
   );
-
   if (!res.ok) {
     const err = await res.json().catch(() => ({ kind: 'error' }));
     throw err;
   }
-
   const data = await res.json();
-  // Backend returns { repoJson, releases, readmeSummary }
   return { ...data, summaryIsAi: false };
 }
 
-// ── Unified fetch ─────────────────────────────────────────────────────────
-async function fetchRepoData(owner, repo) {
-  return IS_SERVED ? fetchRepoDataApi(owner, repo) : fetchRepoDataDirect(owner, repo);
-}
-
-// ── Loading steps ─────────────────────────────────────────────────────────
+// ── Loading steps ──────────────────────────────────────────────────────────
 const LOADING_STEPS = ['Reaching github.com…', 'Reading repository details', 'Checking for releases', 'Preparing download options'];
 
-// ── Toast hook ────────────────────────────────────────────────────────────
+// ── Toast hook ─────────────────────────────────────────────────────────────
 function useToast() {
   const [toast, setToast] = useState(null);
   const show = useCallback((msg) => {
@@ -247,7 +157,7 @@ function useToast() {
   return [toast, show];
 }
 
-// ── Recent history hook ───────────────────────────────────────────────────
+// ── Recent history hook ────────────────────────────────────────────────────
 const STORAGE_KEY = 'repograb_recent';
 function useRecent() {
   const [recent, setRecent] = useState(() => {
@@ -270,7 +180,7 @@ function useRecent() {
   return [recent, add];
 }
 
-// ── Relative time ─────────────────────────────────────────────────────────
+// ── Relative time ──────────────────────────────────────────────────────────
 function relTime(ts) {
   if (!ts) return '';
   const diff = (Date.now() - ts) / 1000;
@@ -280,13 +190,13 @@ function relTime(ts) {
   return `${Math.floor(diff / 86400)}d ago`;
 }
 
-// ── Main App ──────────────────────────────────────────────────────────────
-function App() {
+// ── Main App ───────────────────────────────────────────────────────────────
+export default function App() {
   const [url, setUrl] = useState('');
   const [stage, setStage] = useState('idle'); // idle | loading | loaded | error
   const [loadingStep, setLoadingStep] = useState(0);
   const [data, setData] = useState(null);
-  const [error, setError] = useState(null); // { kind, message }
+  const [error, setError] = useState(null);
   const [toast, showToast] = useToast();
   const [recent, addRecent] = useRecent();
   const [showHowItWorks, setShowHowItWorks] = useState(false);
@@ -372,7 +282,6 @@ function App() {
         releases: enrichedReleases,
         rating: appRating || computeRating(enrichedReleases),
       });
-      console.log('[repo-grab] releases:', enrichedReleases);
       setStage('loaded');
       addRecent(key);
     } catch (err) {
@@ -411,16 +320,16 @@ function App() {
       <header className="topbar">
         <div className="brand">
           <svg className="brand-mark" width="28" height="28" viewBox="0 0 1080 1080" fill="none" aria-hidden="true">
-              <g clipPath="url(#brand-clip)">
-                <path fillRule="evenodd" clipRule="evenodd" d="M540 28C257.12 28 28 257.12 28 540C28 766.56 174.56 957.92 378.08 1025.76C403.68 1030.24 413.28 1014.88 413.28 1001.44C413.28 989.28 412.64 948.96 412.64 906.08C284 929.76 250.72 874.72 240.48 845.92C234.72 831.2 209.76 785.76 188 773.6C170.08 764 144.48 740.32 187.36 739.68C227.68 739.04 256.48 776.8 266.08 792.16C312.16 869.6 385.76 847.84 415.2 834.4C419.68 801.12 433.12 778.72 447.84 765.92C333.92 753.12 214.88 708.96 214.88 513.12C214.88 457.44 234.72 411.36 267.36 375.52C262.24 362.72 244.32 310.24 272.48 239.84C272.48 239.84 315.36 226.4 413.28 292.32C454.24 280.8 497.76 275.04 541.28 275.04C584.8 275.04 628.32 280.8 669.28 292.32C767.2 225.76 810.08 239.84 810.08 239.84C838.24 310.24 820.32 362.72 815.2 375.52C847.84 411.36 867.68 456.8 867.68 513.12C867.68 709.6 748 753.12 634.08 765.92C652.64 781.92 668.64 812.64 668.64 860.64C668.64 929.12 668 984.16 668 1001.44C668 1014.88 677.6 1030.88 703.2 1025.76C905.44 957.92 1052 765.92 1052 540C1052 257.12 822.88 28 540 28Z" fill="#1B1F23"/>
-                <path d="M977.681 732.375H933.625V593.833C933.625 578.594 921.156 566.125 905.917 566.125H795.083C779.844 566.125 767.375 578.594 767.375 593.833V732.375H723.319C698.658 732.375 686.19 762.3 703.646 779.756L830.827 906.938C841.633 917.744 859.09 917.744 869.896 906.938L997.077 779.756C1014.53 762.3 1002.34 732.375 977.681 732.375ZM656.542 1009.46C656.542 1024.7 669.01 1037.17 684.25 1037.17H1016.75C1031.99 1037.17 1044.46 1024.7 1044.46 1009.46C1044.46 994.219 1031.99 981.75 1016.75 981.75H684.25C669.01 981.75 656.542 994.219 656.542 1009.46Z" fill="#00FF6F"/>
-              </g>
-              <defs>
-                <clipPath id="brand-clip">
-                  <rect width="1024" height="1024" fill="white" transform="translate(28 28)"/>
-                </clipPath>
-              </defs>
-            </svg>
+            <g clipPath="url(#brand-clip)">
+              <path fillRule="evenodd" clipRule="evenodd" d="M540 28C257.12 28 28 257.12 28 540C28 766.56 174.56 957.92 378.08 1025.76C403.68 1030.24 413.28 1014.88 413.28 1001.44C413.28 989.28 412.64 948.96 412.64 906.08C284 929.76 250.72 874.72 240.48 845.92C234.72 831.2 209.76 785.76 188 773.6C170.08 764 144.48 740.32 187.36 739.68C227.68 739.04 256.48 776.8 266.08 792.16C312.16 869.6 385.76 847.84 415.2 834.4C419.68 801.12 433.12 778.72 447.84 765.92C333.92 753.12 214.88 708.96 214.88 513.12C214.88 457.44 234.72 411.36 267.36 375.52C262.24 362.72 244.32 310.24 272.48 239.84C272.48 239.84 315.36 226.4 413.28 292.32C454.24 280.8 497.76 275.04 541.28 275.04C584.8 275.04 628.32 280.8 669.28 292.32C767.2 225.76 810.08 239.84 810.08 239.84C838.24 310.24 820.32 362.72 815.2 375.52C847.84 411.36 867.68 456.8 867.68 513.12C867.68 709.6 748 753.12 634.08 765.92C652.64 781.92 668.64 812.64 668.64 860.64C668.64 929.12 668 984.16 668 1001.44C668 1014.88 677.6 1030.88 703.2 1025.76C905.44 957.92 1052 765.92 1052 540C1052 257.12 822.88 28 540 28Z" fill="#1B1F23"/>
+              <path d="M977.681 732.375H933.625V593.833C933.625 578.594 921.156 566.125 905.917 566.125H795.083C779.844 566.125 767.375 578.594 767.375 593.833V732.375H723.319C698.658 732.375 686.19 762.3 703.646 779.756L830.827 906.938C841.633 917.744 859.09 917.744 869.896 906.938L997.077 779.756C1014.53 762.3 1002.34 732.375 977.681 732.375ZM656.542 1009.46C656.542 1024.7 669.01 1037.17 684.25 1037.17H1016.75C1031.99 1037.17 1044.46 1024.7 1044.46 1009.46C1044.46 994.219 1031.99 981.75 1016.75 981.75H684.25C669.01 981.75 656.542 994.219 656.542 1009.46Z" fill="#00FF6F"/>
+            </g>
+            <defs>
+              <clipPath id="brand-clip">
+                <rect width="1024" height="1024" fill="white" transform="translate(28 28)"/>
+              </clipPath>
+            </defs>
+          </svg>
           <div>
             GitHub Download Button
             <div className="brand-meta">public beta</div>
@@ -479,7 +388,13 @@ function App() {
 
       <footer className="footer">
         <span>GitHub Download Button, for people who don't want to learn Git.</span>
-        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>built on github's public api · no login required · by <a href="https://orunto.dev" target="_blank" rel="noopener" style={{ display: 'inline-flex', alignItems: 'center', gap: 5, marginLeft: 8 }}><img src="orunto.png" alt="" aria-hidden="true" style={{ width: 14, height: 14, objectFit: 'contain' }} />Orunto Eniola</a></span>
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+          built on github's public api · no login required · by{' '}
+          <a href="https://orunto.dev" target="_blank" rel="noopener" style={{ display: 'inline-flex', alignItems: 'center', gap: 5, marginLeft: 8 }}>
+            <img src="/orunto.png" alt="" aria-hidden="true" style={{ width: 14, height: 14, objectFit: 'contain' }} />
+            Orunto Eniola
+          </a>
+        </span>
       </footer>
 
       {showHowItWorks && (
@@ -496,7 +411,7 @@ function App() {
   );
 }
 
-// ── Idle / landing view ───────────────────────────────────────────────────
+// ── Idle / landing view ────────────────────────────────────────────────────
 function IdleView({ url, setUrl, inputRef, canSubmit, onSubmit, recent, onPickRecent, onPickExample }) {
   return (
     <>
@@ -571,7 +486,7 @@ function IdleView({ url, setUrl, inputRef, canSubmit, onSubmit, recent, onPickRe
   );
 }
 
-// ── Loading view ──────────────────────────────────────────────────────────
+// ── Loading view ───────────────────────────────────────────────────────────
 function LoadingView({ url, step }) {
   return (
     <>
@@ -597,7 +512,7 @@ function LoadingView({ url, step }) {
   );
 }
 
-// ── Error view ────────────────────────────────────────────────────────────
+// ── Error view ─────────────────────────────────────────────────────────────
 function ErrorView({ url, setUrl, inputRef, canSubmit, onSubmit, error, onReset }) {
   return (
     <>
@@ -648,7 +563,7 @@ function ErrorView({ url, setUrl, inputRef, canSubmit, onSubmit, error, onReset 
   );
 }
 
-// ── Loaded view ───────────────────────────────────────────────────────────
+// ── Loaded view ────────────────────────────────────────────────────────────
 function LoadedView({ data, onReset, showToast }) {
   const {
     owner, repo, description, language, langColor, stars,
@@ -682,7 +597,6 @@ function LoadedView({ data, onReset, showToast }) {
       </section>
 
       <div className="result fade-in">
-        {/* LEFT — repo info + releases */}
         <section className="card">
           <div className="card-header">
             <h2>The Repo</h2>
@@ -766,7 +680,6 @@ function LoadedView({ data, onReset, showToast }) {
           </div>
         </section>
 
-        {/* RIGHT — README */}
         <section className="card">
           <div className="card-header">
             <h2>About the repository</h2>
@@ -788,7 +701,7 @@ function LoadedView({ data, onReset, showToast }) {
   );
 }
 
-// ── Release panel (has releases) ──────────────────────────────────────────
+// ── Release panel ──────────────────────────────────────────────────────────
 function ReleasePanel({ releases, showToast }) {
   const [selectedIdx, setSelectedIdx] = useState(0);
   const release = releases[selectedIdx];
@@ -840,7 +753,7 @@ function ReleasePanel({ releases, showToast }) {
   );
 }
 
-// ── Single asset row ──────────────────────────────────────────────────────
+// ── Single asset row ───────────────────────────────────────────────────────
 const OS_ICON = {
   windows: '⊞',
   mac: '',
@@ -920,7 +833,7 @@ function AssetRow({ asset, onDownload, isMatch }) {
   );
 }
 
-// ── No releases fallback ──────────────────────────────────────────────────
+// ── No releases fallback ───────────────────────────────────────────────────
 function NoReleasesPanel({ repo, sourceDownloadUrl, htmlUrl, showToast }) {
   const handleDownload = () => {
     window.location.href = sourceDownloadUrl;
@@ -973,7 +886,7 @@ function NoReleasesPanel({ repo, sourceDownloadUrl, htmlUrl, showToast }) {
   );
 }
 
-// ── README panel ──────────────────────────────────────────────────────────
+// ── README panel ───────────────────────────────────────────────────────────
 function ReadmeView({ summary, readmeUrl, isAi }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
@@ -1034,7 +947,7 @@ function NoReadme({ repo, htmlUrl }) {
   );
 }
 
-// ── How it works modal ────────────────────────────────────────────────────
+// ── How it works modal ─────────────────────────────────────────────────────
 function HowItWorksModal({ onClose }) {
   useEffect(() => {
     const onKey = (e) => { if (e.key === 'Escape') onClose(); };
@@ -1103,5 +1016,3 @@ function HowItWorksModal({ onClose }) {
     </div>
   );
 }
-
-ReactDOM.createRoot(document.getElementById('root')).render(<App />);

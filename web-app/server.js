@@ -1,10 +1,4 @@
-// backend/server.js — Repo Grab API server
-// Optionally set GITHUB_TOKEN for higher rate limits (60 → 5000 req/hr).
-//
-// Run:  node server.js          (or: npm start)
-// Dev:  npm run dev             (restarts on file changes, Node 18+)
-//
-// Serves the frontend from ../frontend and exposes GET /api/repo?owner=&repo=
+// Serves client/dist and exposes GET /api/repo?owner=&repo=
 
 import express from "express";
 import cors from "cors";
@@ -18,8 +12,7 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// Serve the frontend static files
-app.use(express.static(path.join(__dirname, "../frontend")));
+app.use(express.static(path.join(__dirname, "client/dist")));
 
 // ── Plain-text summary extracted from markdown ────────────────────────────
 function extractSummary(md, maxChars = 300) {
@@ -71,7 +64,6 @@ async function ghFetch(url) {
 
 // ── README-based app complexity analysis ──────────────────────────────────
 
-// Split markdown text into sections by h1/h2/h3 headings.
 function splitSections(text) {
   const sections = [];
   let heading = '';
@@ -90,7 +82,6 @@ function splitSections(text) {
   return sections.length ? sections : [{ heading: '', content: text }];
 }
 
-// Extract fenced code blocks and inline code from markdown.
 function extractCodeBlocks(text) {
   const out = [];
   let m;
@@ -101,22 +92,13 @@ function extractCodeBlocks(text) {
   return out;
 }
 
-// Strip all code spans and blocks, leaving only prose.
 function stripMarkdown(text) {
   return text.replace(/```[\s\S]*?```/g, ' ').replace(/`[^`\n]+`/g, ' ');
 }
 
 /**
  * Determines how easy the software is to install and run for a non-technical user.
- *
- * @param {string}   readmeText  Raw README markdown
- * @param {string[]} assetNames  All release asset filenames across all releases (flat list)
  * @returns {{ tier: 'simple'|'technical'|'highly-technical', label: string, detail: string, signals: string[] }}
- *
- * Tiers:
- *   simple           – Download a platform installer and run it. No terminal needed.
- *   technical        – Has releases but needs a runtime (Java, etc.) or a manual step.
- *   highly-technical – Must use a terminal; or is a library / CLI / server / bot.
  */
 function analyzeReadmeComplexity(readmeText, assetNames = []) {
   const sc = { simple: 0, technical: 0, ht: 0 };
@@ -124,7 +106,6 @@ function analyzeReadmeComplexity(readmeText, assetNames = []) {
 
   function bump(tier, n, signal) { sc[tier] += n; signals.push(signal); }
 
-  // ── 1. Asset signals ─────────────────────────────────────────────────────
   const lc = assetNames.map(n => String(n).toLowerCase());
 
   const hasInstaller = lc.some(n =>
@@ -145,12 +126,10 @@ function analyzeReadmeComplexity(readmeText, assetNames = []) {
   if (hasOnlyArchives) bump('technical',  3, 'only archive files, no platform installer');
   if (lc.length === 0) bump('ht',         6, 'no release assets published');
 
-  // ── 2. README analysis ───────────────────────────────────────────────────
   if (readmeText) {
     const sections  = splitSections(readmeText);
     const fullProse = stripMarkdown(readmeText).toLowerCase();
 
-    // 2a. Project-type signals (whole README, section-independent)
     const htTypes = [
       [/\b(this is a|a) (library|package|module|sdk|framework)\b/, 'described as a library/package/SDK', 10],
       [/\bcommand[- ]line (tool|utility|interface|app)\b/,         'command-line tool',                   9],
@@ -169,28 +148,21 @@ function analyzeReadmeComplexity(readmeText, assetNames = []) {
     ];
     for (const [p, s, w] of simpleTypes) if (p.test(fullProse)) bump('simple', w, s);
 
-    // 2b. Tech-stack signals (whole README)
     const stacks = [
-      // Simple-leaning: these frameworks typically ship prebuilt platform installers.
       ['simple',    /\belectron\b/,                                    'Electron app',                4],
       ['simple',    /\btauri\b/,                                       'Tauri app',                   4],
       ['simple',    /\bwpf\b|\bwinforms\b|\bwinui\b|\bmaui\b/,        '.NET GUI (WPF/WinForms/MAUI)', 4],
       ['simple',    /\bswiftui\b|\bnsapp\b|\bappkit\b/,               'native macOS/iOS framework',  4],
       ['simple',    /\bqwidget\b|\bqmainwindow\b|\bqt (gui|widget)\b/, 'Qt GUI widgets',              3],
       ['simple',    /\bflutter.{0,60}(desktop|windows|macos|linux)/,  'Flutter desktop',             4],
-      // Technical: GUI frameworks that still require a runtime to be installed.
       ['technical', /\bjavafx\b|\bjavax\.swing\b/,                     'Java GUI (needs JRE)',        4],
       ['technical', /\btkinter\b|\bpyqt[456]?\b|\bpyside[26]?\b|\bwxpython\b|\bkivy\b/, 'Python GUI (needs Python)', 5],
-      // Highly technical: server/web frameworks — these are not GUI desktop apps.
       ['ht',        /\bexpress(\.js)?\b|\bfastify\b|\bkoa\b|\bnestjs\b/, 'Node.js server framework', 5],
       ['ht',        /\bflask\b|\bdjango\b|\bfastapi\b|\buvicorn\b/,   'Python web framework',        5],
       ['ht',        /\bspring boot\b|\bspring mvc\b/,                  'Spring Boot server',          5],
     ];
     for (const [tier, p, s, w] of stacks) if (p.test(fullProse)) bump(tier, w, s);
 
-    // 2c. Section-aware terminal-command and prerequisite analysis.
-    //     Build/development sections are skipped — their terminal commands reflect
-    //     developer workflow, not the end-user experience.
     const DEV_SECTION  = /\b(build(ing)?|compil(e|ing)|develop(ment|ing)?|contribut(e|ing)|from[ -]source|debug(ging)?|test(ing)?|ci|docker(file)?)\b/i;
     const USER_SECTION = /\b(install(ation)?|get(ting)? started|quick[- ]start|usage|running|run|setup|download|how to (use|run)|prerequisite|requirement)\b/i;
 
@@ -198,9 +170,8 @@ function analyzeReadmeComplexity(readmeText, assetNames = []) {
       if (DEV_SECTION.test(heading)) continue;
 
       const isUser = !heading || USER_SECTION.test(heading);
-      const wt     = isUser ? 1.0 : 0.5; // down-weight ambiguous sections
+      const wt     = isUser ? 1.0 : 0.5;
 
-      // Terminal run commands found in code blocks → highly technical
       const code    = extractCodeBlocks(content);
       const htCmds  = [
         [/\bnpm (start|run dev|run start|run serve|run prod)\b/, 'npm start/run',        8],
@@ -215,7 +186,6 @@ function analyzeReadmeComplexity(readmeText, assetNames = []) {
         [/\bdocker(-compose)? (run|up)\b|docker compose (run|up)\b/, 'docker run/up',  6],
         [/\buvicorn\b|\bgunicorn\b/,                             'ASGI/WSGI server',    7],
       ];
-      // java -jar might still be a GUI app — score as technical, not highly-technical.
       const techCmds = [
         [/\bjava -jar\b/, 'java -jar (needs JRE)', 5],
       ];
@@ -225,7 +195,6 @@ function analyzeReadmeComplexity(readmeText, assetNames = []) {
         for (const [p, s, w] of techCmds) if (p.test(blk)) bump('technical', Math.round(w * wt), s);
       }
 
-      // Prose in user-facing sections: simple-use phrases and runtime prerequisites
       if (isUser) {
         const prose = stripMarkdown(content).toLowerCase();
 
@@ -259,28 +228,20 @@ function analyzeReadmeComplexity(readmeText, assetNames = []) {
     }
   }
 
-  // ── 3. Determine tier ───────────────────────────────────────────────────
   const { simple, technical, ht } = sc;
 
-  // Native installers strongly override README hints — build instructions often
-  // mention npm/python/etc. but the end user just downloads the .exe/.dmg.
   if (hasInstaller && ht < 8) {
     return { tier: 'simple', label: 'Simple', detail: 'Download and run. No setup needed.', signals };
   }
-
   if (ht > simple && ht > technical) {
     return { tier: 'highly-technical', label: 'Highly Technical', detail: 'Requires a terminal to run. Built for developers.', signals };
   }
-
   if (simple > technical) {
     return { tier: 'simple', label: 'Simple', detail: 'Download and run. No setup needed.', signals };
   }
-
   if (technical > 0 || simple > 0) {
     return { tier: 'technical', label: 'Technical', detail: 'Has releases but may need extra setup to run.', signals };
   }
-
-  // No strong signals — safest fallback for non-technical users
   return { tier: 'highly-technical', label: 'Highly Technical', detail: 'No prebuilt installer found. Likely requires a developer.', signals };
 }
 
@@ -290,24 +251,17 @@ app.get("/api/repo", async (req, res) => {
   console.log(`[api/repo] ${owner}/${repo}`);
 
   if (!owner || !repo) {
-    return res
-      .status(400)
-      .json({ kind: "invalid", message: "Missing owner or repo" });
+    return res.status(400).json({ kind: "invalid", message: "Missing owner or repo" });
   }
 
-  // Basic sanity check — prevent path traversal / weird inputs
   if (!/^[\w.-]+$/.test(owner) || !/^[\w.-]+$/.test(repo)) {
-    return res
-      .status(400)
-      .json({ kind: "invalid", message: "Invalid owner or repo name" });
+    return res.status(400).json({ kind: "invalid", message: "Invalid owner or repo name" });
   }
 
   try {
     const [repoRes, releasesRes, readmeRes] = await Promise.all([
       ghFetch(`https://api.github.com/repos/${owner}/${repo}`),
-      ghFetch(
-        `https://api.github.com/repos/${owner}/${repo}/releases?per_page=5`,
-      ),
+      ghFetch(`https://api.github.com/repos/${owner}/${repo}/releases?per_page=5`),
       ghFetch(`https://api.github.com/repos/${owner}/${repo}/readme`),
     ]);
 
@@ -321,7 +275,6 @@ app.get("/api/repo", async (req, res) => {
     const repoJson = await repoRes.json();
     if (repoJson.private) return res.status(403).json({ kind: "private" });
 
-    // Releases — treat a rate-limit on this call the same as the repo call
     if (releasesRes.status === 403 || releasesRes.status === 429)
       return res.status(429).json({ kind: "ratelimit" });
 
@@ -333,23 +286,17 @@ app.get("/api/repo", async (req, res) => {
       console.warn(`[api/repo] releases fetch failed: ${releasesRes.status} for ${owner}/${repo}`);
     }
 
-    // README — decode base64 content
     let readmeText = null;
     if (readmeRes.ok) {
       const readmeJson = await readmeRes.json();
       try {
-        readmeText = Buffer.from(
-          readmeJson.content.replace(/\n/g, ""),
-          "base64",
-        ).toString("utf-8");
+        readmeText = Buffer.from(readmeJson.content.replace(/\n/g, ""), "base64").toString("utf-8");
       } catch {
         // ignore decode failures
       }
     }
 
     const readmeSummary = extractSummary(readmeText);
-
-    // Analyze README + assets to rate how easy the app is to run
     const assetNames = releases.flatMap(r => (r.assets || []).map(a => a.name));
     const appRating = analyzeReadmeComplexity(readmeText, assetNames);
     console.log(`[api/repo] rating=${appRating.tier} signals=[${appRating.signals.join(', ')}]`);
@@ -357,26 +304,18 @@ app.get("/api/repo", async (req, res) => {
     return res.json({ repoJson, releases, readmeSummary, appRating });
   } catch (err) {
     console.error("[api/repo]", err);
-    return res
-      .status(500)
-      .json({ kind: "error", message: "Internal server error" });
+    return res.status(500).json({ kind: "error", message: "Internal server error" });
   }
 });
 
 // SPA catch-all — serve index.html for any non-API route
-app.get("*", (_req, res) => {
-  res.sendFile(path.join(__dirname, "../frontend/index.html"));
+app.use((_req, res) => {
+  res.sendFile(path.join(__dirname, "client/dist/index.html"));
 });
 
-if (process.env.NODE_ENV !== "production" && !process.env.VERCEL) {
-  app.listen(PORT, () => {
-    console.log(`GitHub Download Button running at http://localhost:${PORT}`);
-    if (!process.env.GITHUB_TOKEN) {
-      console.warn(
-        "[warn] GITHUB_TOKEN not set — GitHub rate limit is 60 req/hr",
-      );
-    }
-  });
-}
-
-export default app;
+app.listen(PORT, () => {
+  console.log(`GitHub Download Button running at http://localhost:${PORT}`);
+  if (!process.env.GITHUB_TOKEN) {
+    console.warn("[warn] GITHUB_TOKEN not set — GitHub rate limit is 60 req/hr");
+  }
+});
