@@ -1,7 +1,7 @@
 // content.js — auto-injects a download panel on GitHub repo pages.
 // Runs after utils.js (listed first in manifest content_scripts).
 (function () {
-  'use strict';
+  "use strict";
 
   // ── Styles (defined first — used when building shadow DOM) ────────────
   const PANEL_CSS = `
@@ -113,63 +113,84 @@
 
   // ── Guard: only run on /owner/repo pages ──────────────────────────────
   const RESERVED = new Set([
-    'explore', 'settings', 'login', 'logout', 'notifications', 'issues',
-    'marketplace', 'sponsors', 'orgs', 'about', 'pricing', 'security',
-    'topics', 'collections', 'trending', 'new', 'codespaces', 'discussions',
-    'features', 'enterprise', 'contact', 'team',
+    "explore",
+    "settings",
+    "login",
+    "logout",
+    "notifications",
+    "issues",
+    "marketplace",
+    "sponsors",
+    "orgs",
+    "about",
+    "pricing",
+    "security",
+    "topics",
+    "collections",
+    "trending",
+    "new",
+    "codespaces",
+    "discussions",
+    "features",
+    "enterprise",
+    "contact",
+    "team",
   ]);
-  const parts = location.pathname.replace(/^\//, '').split('/').filter(Boolean);
+  const parts = location.pathname.replace(/^\//, "").split("/").filter(Boolean);
   if (parts.length < 2 || RESERVED.has(parts[0])) return;
 
   const [owner, repo] = parts;
   const SESSION_KEY = `rg-dismissed:${owner}/${repo}`;
   if (sessionStorage.getItem(SESSION_KEY)) return;
-  if (document.getElementById('rg-host')) return;
+  if (document.getElementById("rg-host")) return;
 
   const USER_OS = detectOS(); // from utils.js
 
   // ── Build shadow DOM ───────────────────────────────────────────────────
-  const host = document.createElement('div');
-  host.id = 'rg-host';
+  const host = document.createElement("div");
+  host.id = "rg-host";
   Object.assign(host.style, {
-    position: 'fixed', bottom: '24px', right: '24px', zIndex: '2147483647',
+    position: "fixed",
+    bottom: "24px",
+    right: "24px",
+    zIndex: "2147483647",
   });
   document.body.appendChild(host);
 
-  const shadow = host.attachShadow({ mode: 'open' });
+  const shadow = host.attachShadow({ mode: "open" });
 
-  const styleEl = document.createElement('style');
+  const styleEl = document.createElement("style");
   styleEl.textContent = PANEL_CSS;
   shadow.appendChild(styleEl);
 
-  const panel = document.createElement('div');
-  panel.className = 'panel';
+  const panel = document.createElement("div");
+  panel.className = "panel";
   shadow.appendChild(panel);
 
   // ── Event delegation ───────────────────────────────────────────────────
-  shadow.addEventListener('click', e => {
-    if (e.target.closest('.close-btn')) {
-      sessionStorage.setItem(SESSION_KEY, '1');
+  shadow.addEventListener("click", (e) => {
+    if (e.target.closest(".close-btn")) {
+      sessionStorage.setItem(SESSION_KEY, "1");
       host.remove();
       return;
     }
-    const assetBtn = e.target.closest('.asset');
+    const assetBtn = e.target.closest(".asset");
     if (assetBtn && assetBtn.dataset.dl) {
       window.location.href = assetBtn.dataset.dl;
       return;
     }
-    const dlBtn = e.target.closest('.dl-btn');
+    const dlBtn = e.target.closest(".dl-btn");
     if (dlBtn) {
-      const asset = dlBtn.closest('.asset');
+      const asset = dlBtn.closest(".asset");
       if (asset && asset.dataset.dl) window.location.href = asset.dataset.dl;
       return;
     }
-    if (e.target.id === 'rg-expand') {
-      const others = shadow.getElementById('rg-others');
+    if (e.target.id === "rg-expand") {
+      const others = shadow.getElementById("rg-others");
       if (!others) return;
-      const hidden = others.style.display === 'none';
-      others.style.display = hidden ? 'flex' : 'none';
-      e.target.textContent = hidden ? '▲ Show less' : e.target.dataset.label;
+      const hidden = others.style.display === "none";
+      others.style.display = hidden ? "flex" : "none";
+      e.target.textContent = hidden ? "▲ Show less" : e.target.dataset.label;
     }
   });
 
@@ -190,18 +211,21 @@
   fetchRepo(owner, repo) // from utils.js
     .then(({ repoJson, releases, appRating }) => {
       const enriched = enrichReleases(releases, repoJson.full_name);
-      const rating   = appRating || computeRating(enriched);
-      const latest   = enriched[0];
+      const rating = appRating || computeRating(enriched);
+      const latest = enriched[0];
 
-      if (!latest) { renderNoReleases(repoJson, rating); return; }
+      if (!latest) {
+        renderNoReleases(repoJson, rating);
+        return;
+      }
 
-      const sorted  = [...latest.assets].sort((a, b) =>
-        (a.os === USER_OS ? -1 : 0) - (b.os === USER_OS ? -1 : 0)
+      const sorted = [...latest.assets].sort(
+        (a, b) => (a.os === USER_OS ? -1 : 0) - (b.os === USER_OS ? -1 : 0),
       );
-      const matched = sorted.filter(a => a.os === USER_OS);
-      const others  = sorted.filter(a => a.os !== USER_OS);
+      const matched = sorted.filter((a) => a.os === USER_OS);
+      const others = sorted.filter((a) => a.os !== USER_OS);
       const primary = matched.length > 0 ? matched : sorted.slice(0, 3);
-      const othersLabel = `▼ ${others.length} more download${others.length !== 1 ? 's' : ''}`;
+      const othersLabel = `▼ ${others.length} more download${others.length !== 1 ? "s" : ""}`;
 
       panel.innerHTML = `
         <div class="header">
@@ -211,40 +235,52 @@
         <div class="body">
           <div class="repo-line">
             <span class="repo-name">${owner}/${repo}</span>
-            <span class="rating ${rating.tier}">${rating.tier === 'simple' ? '✓' : rating.tier === 'highly-technical' ? '⚠' : '⚙'} ${rating.label}</span>
+            <span class="rating ${rating.tier}">${rating.tier === "simple" ? "✓" : rating.tier === "highly-technical" ? "⚠" : "⚙"} ${rating.label}</span>
           </div>
           <div class="rating-detail">${rating.detail}</div>
           <div class="divider"></div>
-          <div class="section-label">Downloads${matched.length > 0 && USER_OS ? ` · ${USER_OS}` : ''}</div>
+          <div class="section-label">Downloads${matched.length > 0 && USER_OS ? ` · ${USER_OS}` : ""}</div>
           <div class="assets">
-            ${primary.map(a => assetRow(a, a.os === USER_OS)).join('')}
+            ${primary.map((a) => assetRow(a, a.os === USER_OS)).join("")}
           </div>
-          ${matched.length > 0 && others.length > 0 ? `
+          ${
+            matched.length > 0 && others.length > 0
+              ? `
             <button class="expand-btn" id="rg-expand" data-label="${othersLabel}">${othersLabel}</button>
             <div id="rg-others" style="display:none;flex-direction:column;gap:5px;">
-              ${others.map(a => assetRow(a, false)).join('')}
+              ${others.map((a) => assetRow(a, false)).join("")}
             </div>
-          ` : ''}
+          `
+              : ""
+          }
           <div class="divider"></div>
           <a href="https://github.com/${owner}/${repo}/releases" target="_blank" class="gh-link">
             View all releases on GitHub →
           </a>
         </div>`;
     })
-    .catch(() => {
+    .catch((err) => {
+      let msg = "Couldn't connect — is the Repo Grab server running?";
+      if (err && err.kind === "notfound") {
+        msg = "Repository not found or private. Check the URL.";
+      } else if (err && err.kind === "private") {
+        msg =
+          "This repository is private. Repo Grab only works with public repos.";
+      } else if (err && err.kind === "ratelimit") {
+        msg = "GitHub rate limit hit. Try again in a minute.";
+      }
       panel.innerHTML = `
         <div class="header">
           <span class="brand">↓ GitHub Download Button</span>
           <button class="close-btn" title="Dismiss">✕</button>
         </div>
         <div class="body">
-          <div class="error-msg">Couldn't connect — is the Repo Grab server running?</div>
+          <div class="error-msg">${msg}</div>
         </div>`;
     });
-
   // ── Helpers ────────────────────────────────────────────────────────────
   function renderNoReleases(repoJson, rating) {
-    const srcUrl = `https://github.com/${repoJson.full_name}/archive/refs/heads/${repoJson.default_branch || 'main'}.zip`;
+    const srcUrl = `https://github.com/${repoJson.full_name}/archive/refs/heads/${repoJson.default_branch || "main"}.zip`;
     panel.innerHTML = `
       <div class="header">
         <span class="brand">↓ GitHub Download Button</span>
@@ -271,15 +307,15 @@
   }
 
   function assetRow(asset, isMatch) {
-    const icon = OS_ICON[asset.os] || '↓'; // OS_ICON from utils.js
+    const icon = OS_ICON[asset.os] || "↓"; // OS_ICON from utils.js
     return `
-      <button class="asset${isMatch ? ' match' : ''}" data-dl="${asset.downloadUrl}">
+      <button class="asset${isMatch ? " match" : ""}" data-dl="${asset.downloadUrl}">
         <div class="asset-left">
           <span class="asset-icon">${icon}</span>
           <span class="asset-lbl">${asset.label}</span>
         </div>
         <div class="asset-right">
-          ${asset.size !== '—' ? `<span class="asset-size">${asset.size}</span>` : ''}
+          ${asset.size !== "—" ? `<span class="asset-size">${asset.size}</span>` : ""}
           <span class="dl-btn">↓</span>
         </div>
       </button>`;
