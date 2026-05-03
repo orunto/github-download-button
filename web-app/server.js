@@ -414,6 +414,94 @@ function analyzeReadmeComplexity(readmeText, assetNames = []) {
   };
 }
 
+// ── README binary download link extraction ────────────────────────────────
+
+/**
+ * Extracts binary download links from a README.
+ * Catches two cases:
+ *  1. Any markdown link whose URL ends in a known binary extension.
+ *  2. Platform-named links (Windows / Mac / Linux) that sit under a
+ *     heading that looks like a downloads / binaries section.
+ * Returns [{ label, url, os }]
+ */
+function extractReadmeDownloads(readmeText, owner, repo, defaultBranch) {
+  if (!readmeText) return [];
+
+  const results = [];
+  const seen = new Set();
+  const BINARY_EXTS = [".exe", ".msi", ".dmg", ".pkg", ".deb", ".rpm", ".appimage"];
+  const DOWNLOAD_HEADING =
+    /\b(download|binary|binaries|install(er|ation)?|release|prebuilt|pre-built|get)\b/i;
+  const PLATFORM_NAME = /^(windows|win|mac|macos|linux|ubuntu|debian|fedora)$/i;
+  const branch = defaultBranch || "master";
+
+  // Resolve a README link href to a direct download URL.
+  // Handles: absolute external URLs, GitHub blob URLs, and relative repo paths.
+  function resolveUrl(href) {
+    if (!href) return null;
+
+    // GitHub blob URL → raw download URL
+    const blobMatch = /^https?:\/\/github\.com\/([^/]+)\/([^/]+)\/blob\/(.+)$/.exec(href);
+    if (blobMatch) {
+      return `https://github.com/${blobMatch[1]}/${blobMatch[2]}/raw/${blobMatch[3]}`;
+    }
+
+    // Already a raw or external URL
+    if (href.startsWith("http")) return href;
+
+    // Relative path within the repo → raw download URL
+    const clean = href.replace(/^\.\//, "");
+    return `https://github.com/${owner}/${repo}/raw/${branch}/${clean}`;
+  }
+
+  let inDownloadSection = false;
+
+  for (const line of readmeText.split("\n")) {
+    const headingMatch = /^#{1,4}\s+(.+)$/.exec(line);
+    if (headingMatch) {
+      inDownloadSection = DOWNLOAD_HEADING.test(headingMatch[1]);
+      continue;
+    }
+
+    const linkRe = /\[([^\]]+)\]\(([^)\s]+)\)/g;
+    let m;
+    while ((m = linkRe.exec(line)) !== null) {
+      const text = m[1].trim();
+      const rawHref = m[2].trim();
+      if (seen.has(rawHref)) continue;
+
+      const href = rawHref.toLowerCase();
+      const t = text.toLowerCase();
+
+      const isBinaryUrl = BINARY_EXTS.some((ext) => href.endsWith(ext));
+      const isPlatformLink = PLATFORM_NAME.test(t);
+
+      if (!isBinaryUrl && !(inDownloadSection && isPlatformLink)) continue;
+
+      const resolvedUrl = resolveUrl(rawHref);
+      if (!resolvedUrl) continue;
+
+      seen.add(rawHref);
+
+      const u = resolvedUrl.toLowerCase();
+      let os = "generic";
+      if (/windows|win32|win64|\.exe$|\.msi$/.test(u) || /\b(windows|win)\b/.test(t))
+        os = "windows";
+      else if (/macos|osx|darwin|\.dmg$|\.pkg$/.test(u) || /\b(mac|macos)\b/.test(t))
+        os = "mac";
+      else if (/linux|\.deb$|\.rpm$|\.appimage$/.test(u) || /\blinux\b/.test(t))
+        os = "linux";
+
+      const osLabel =
+        os === "windows" ? "Windows" : os === "mac" ? "macOS" : os === "linux" ? "Linux" : null;
+
+      results.push({ label: osLabel || text, url: resolvedUrl, os });
+    }
+  }
+
+  return results;
+}
+
 // ── Main API endpoint ─────────────────────────────────────────────────────
 app.get("/api/repo", async (req, res) => {
   const { owner, repo } = req.query;
@@ -480,12 +568,25 @@ app.get("/api/repo", async (req, res) => {
     const assetNames = releases.flatMap((r) =>
       (r.assets || []).map((a) => a.name),
     );
-    const appRating = analyzeReadmeComplexity(readmeText, assetNames);
+
+    const readmeDownloads = releases.length === 0
+      ? extractReadmeDownloads(readmeText, owner, repo, repoJson.default_branch)
+      : [];
+
+    // When there are no GitHub releases but the README links to binary files,
+    // treat those filenames as pseudo-asset-names so the rating reflects that
+    // actual installers exist.
+    const effectiveAssetNames =
+      readmeDownloads.length > 0
+        ? [...assetNames, ...readmeDownloads.map((d) => d.url)]
+        : assetNames;
+
+    const appRating = analyzeReadmeComplexity(readmeText, effectiveAssetNames);
     console.log(
       `[api/repo] rating=${appRating.tier} signals=[${appRating.signals.join(", ")}]`,
     );
 
-    return res.json({ repoJson, releases, readmeSummary, appRating });
+    return res.json({ repoJson, releases, readmeSummary, appRating, readmeDownloads });
   } catch (err) {
     console.error("[api/repo]", err);
     return res

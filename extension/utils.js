@@ -1,6 +1,8 @@
 // utils.js — shared utilities for content.js and popup.js
 // Update RG_BACKEND to your deployed backend URL when in production.
-const RG_BACKEND = "https://githubdownloadbutton.orunto.dev";
+const RG_BACKEND = "http://localhost:3000";
+
+// const RG_BACKEND = "https://githubdownloadbutton.orunto.dev";
 
 const OS_ICON = {
   windows: "⊞",

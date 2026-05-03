@@ -220,7 +220,7 @@
 
   // ── Fetch & render ─────────────────────────────────────────────────────
   fetchRepo(owner, repo) // from utils.js
-    .then(({ repoJson, releases, appRating }) => {
+    .then(({ repoJson, releases, appRating, readmeDownloads }) => {
       const fullName = repoJson.full_name.toLowerCase();
       const isHome = fullName === "orunto/github-download-button";
 
@@ -237,7 +237,7 @@
       const latest = enriched[0];
 
       if (!latest) {
-        renderNoReleases(repoJson, rating);
+        renderNoReleases(repoJson, rating, readmeDownloads || []);
         return;
       }
 
@@ -301,8 +301,22 @@
         </div>`;
     });
   // ── Helpers ────────────────────────────────────────────────────────────
-  function renderNoReleases(repoJson, rating) {
+  function renderNoReleases(repoJson, rating, readmeDownloads) {
     const srcUrl = `https://github.com/${repoJson.full_name}/archive/refs/heads/${repoJson.default_branch || "main"}.zip`;
+    const ratingTier = rating.tier;
+    const ratingIcon = ratingTier === "simple" ? "✓" : ratingTier === "highly-technical" ? "⚠" : "⚙";
+    const readmeDlRows = (readmeDownloads || []).map((d) => {
+      const icon = OS_ICON[d.os] || "↓";
+      const isMatch = d.os === USER_OS;
+      return `
+        <button class="asset${isMatch ? " match" : ""}" data-dl="${d.url}">
+          <div class="asset-left">
+            <span class="asset-icon">${icon}</span>
+            <span class="asset-lbl">${d.label}</span>
+          </div>
+          <span class="dl-btn">↓</span>
+        </button>`;
+    });
     panel.innerHTML = `
       <div class="header">
         <span class="brand">↓ GitHub Download Button</span>
@@ -311,13 +325,18 @@
       <div class="body">
         <div class="repo-line">
           <span class="repo-name">${repoJson.full_name}</span>
-          <span class="rating technical">⚙ Technical</span>
+          <span class="rating ${ratingTier}">${ratingIcon} ${rating.label}</span>
         </div>
         <div class="rating-detail">${rating.detail}</div>
         <div class="divider"></div>
-        <div class="section-label">Downloads</div>
+        ${readmeDlRows.length > 0 ? `
+        <div class="section-label">Downloads · from README</div>
+        <div class="assets">${readmeDlRows.join("")}</div>
+        <div class="divider"></div>
+        <div class="section-label">Source</div>
+        ` : `<div class="section-label">Downloads</div>`}
         <div class="assets">
-          <button class="asset match" data-dl="${srcUrl}">
+          <button class="asset" data-dl="${srcUrl}">
             <div class="asset-left">
               <span class="asset-icon">{ }</span>
               <span class="asset-lbl">Source code (.zip)</span>

@@ -74,7 +74,7 @@ function renderSearch(msg) {
 }
 
 function renderResult(owner, repo, data) {
-  let { repoJson, releases, appRating } = data;
+  let { repoJson, releases, appRating, readmeDownloads } = data;
   const fullName = repoJson.full_name.toLowerCase();
   const isHome = fullName === "orunto/github-download-button";
 
@@ -91,7 +91,7 @@ function renderResult(owner, repo, data) {
   const latest = enriched[0];
 
   if (!latest) {
-    renderNoReleases(owner, repo, repoJson, rating);
+    renderNoReleases(owner, repo, repoJson, rating, readmeDownloads || []);
     return;
   }
 
@@ -154,18 +154,29 @@ function renderResult(owner, repo, data) {
   }
 }
 
-function renderNoReleases(owner, repo, repoJson, rating) {
+function renderNoReleases(owner, repo, repoJson, rating, readmeDownloads) {
   const srcUrl = `https://github.com/${repoJson.full_name}/archive/refs/heads/${repoJson.default_branch || "main"}.zip`;
+  const ratingTier = rating.tier;
+  const ratingIcon = ratingTier === "simple" ? "✓" : ratingTier === "highly-technical" ? "⚠" : "⚙";
+  const rdl = readmeDownloads || [];
+  const readmeDlRows = rdl.map((d) =>
+    assetHTML({ name: d.label, label: d.label, os: d.os, size: "—", downloadUrl: d.url }, d.os === USER_OS),
+  );
   setApp(
     shell(
       `
     <div class="repo-line">
       <span class="repo-name">${owner}/${repo}</span>
-      <span class="rating technical">⚙ Technical</span>
+      <span class="rating ${ratingTier}">${ratingIcon} ${rating.label}</span>
     </div>
     <div class="rating-detail">${rating.detail}</div>
     <div class="divider"></div>
-    <div class="section-label">Downloads</div>
+    ${rdl.length > 0 ? `
+    <div class="section-label">Downloads · from README</div>
+    <div class="assets" id="rg-readme-dls">${readmeDlRows.join("")}</div>
+    <div class="divider"></div>
+    <div class="section-label">Source</div>
+    ` : `<div class="section-label">Downloads</div>`}
     <div class="assets">
       ${assetHTML({ name: "Source code (zip)", label: "Source code (.zip)", os: "source", size: "—", downloadUrl: srcUrl }, false)}
     </div>`,

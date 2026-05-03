@@ -278,7 +278,7 @@ export default function App() {
       }, 500);
 
       try {
-        let { repoJson, releases, readmeSummary, summaryIsAi, appRating } =
+        let { repoJson, releases, readmeSummary, summaryIsAi, appRating, readmeDownloads } =
           await fetchRepoData(p.owner, p.repo);
         clearInterval(stepTimer);
 
@@ -345,6 +345,7 @@ export default function App() {
           htmlUrl: repoJson.html_url,
           releases: enrichedReleases,
           rating: appRating || computeRating(enrichedReleases),
+          readmeDownloads: readmeDownloads || [],
         });
         setStage("loaded");
         addRecent(key);
@@ -715,6 +716,7 @@ function LoadedView({ data, onReset, showToast }) {
     topics,
     releases,
     rating,
+    readmeDownloads,
   } = data;
 
   const hasReleases = releases && releases.length > 0;
@@ -860,6 +862,7 @@ function LoadedView({ data, onReset, showToast }) {
                 sourceDownloadUrl={sourceDownloadUrl}
                 htmlUrl={htmlUrl}
                 showToast={showToast}
+                readmeDownloads={readmeDownloads || []}
               />
             )}
 
@@ -1110,11 +1113,15 @@ function AssetRow({ asset, onDownload, isMatch }) {
 }
 
 // ── No releases fallback ───────────────────────────────────────────────────
-function NoReleasesPanel({ repo, sourceDownloadUrl, htmlUrl, showToast }) {
-  const handleDownload = () => {
-    window.location.href = sourceDownloadUrl;
-    showToast("Download started. Check your Downloads folder");
+function NoReleasesPanel({ repo, sourceDownloadUrl, htmlUrl, showToast, readmeDownloads }) {
+  const rdl = readmeDownloads || [];
+  const hasReadmeDownloads = rdl.length > 0;
+
+  const handleDownload = (url, name) => {
+    window.location.href = url;
+    showToast(`Downloading ${name}…`);
   };
+
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
       <div
@@ -1122,7 +1129,7 @@ function NoReleasesPanel({ repo, sourceDownloadUrl, htmlUrl, showToast }) {
           padding: "14px 16px",
           background: "#fdfcf8",
           border: "1px solid var(--line-2)",
-          borderLeft: "3px solid var(--ink-3)",
+          borderLeft: `3px solid ${hasReadmeDownloads ? "var(--accent)" : "var(--ink-3)"}`,
           borderRadius: "var(--radius-sm)",
           display: "flex",
           flexDirection: "column",
@@ -1140,7 +1147,7 @@ function NoReleasesPanel({ repo, sourceDownloadUrl, htmlUrl, showToast }) {
           }}
         >
           <Icon.Info />
-          No releases published yet
+          {hasReadmeDownloads ? "No GitHub releases, but the README has downloads" : "No releases published yet"}
         </div>
         <p
           style={{
@@ -1150,10 +1157,9 @@ function NoReleasesPanel({ repo, sourceDownloadUrl, htmlUrl, showToast }) {
             lineHeight: 1.55,
           }}
         >
-          This repo hasn't put out an official release. No installers, no
-          versioned packages. That usually means it's still early-stage, or it's
-          a library meant to be used by developers rather than downloaded and
-          run directly.
+          {hasReadmeDownloads
+            ? "This repo hasn't published a GitHub release, but we found download links in the README. These may be older builds hosted elsewhere."
+            : "This repo hasn't put out an official release. No installers, no versioned packages. That usually means it's still early-stage, or it's a library meant to be used by developers rather than downloaded and run directly."}
         </p>
         <a
           href={`${htmlUrl}/releases`}
@@ -1171,29 +1177,65 @@ function NoReleasesPanel({ repo, sourceDownloadUrl, htmlUrl, showToast }) {
         </a>
       </div>
 
-      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-        <div style={{ flex: 1, height: 1, background: "var(--line)" }} />
-        <span
-          style={{
-            fontSize: 11,
-            color: "var(--ink-3)",
-            fontFamily: "'JetBrains Mono', monospace",
-            whiteSpace: "nowrap",
-          }}
-        >
-          still want the files?
-        </span>
-        <div style={{ flex: 1, height: 1, background: "var(--line)" }} />
-      </div>
+      {hasReadmeDownloads && (
+        <>
+          <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+            <span className="choice-label">
+              Downloads · from README
+            </span>
+            {rdl.map((d) => (
+              <AssetRow
+                key={d.url}
+                asset={{ name: d.label, label: d.label, os: d.os, size: "—", downloadUrl: d.url }}
+                onDownload={(a) => handleDownload(a.downloadUrl, a.name)}
+                isMatch={d.os === USER_OS}
+              />
+            ))}
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <div style={{ flex: 1, height: 1, background: "var(--line)" }} />
+            <span
+              style={{
+                fontSize: 11,
+                color: "var(--ink-3)",
+                fontFamily: "'JetBrains Mono', monospace",
+                whiteSpace: "nowrap",
+              }}
+            >
+              or grab the source
+            </span>
+            <div style={{ flex: 1, height: 1, background: "var(--line)" }} />
+          </div>
+        </>
+      )}
+
+      {!hasReadmeDownloads && (
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <div style={{ flex: 1, height: 1, background: "var(--line)" }} />
+          <span
+            style={{
+              fontSize: 11,
+              color: "var(--ink-3)",
+              fontFamily: "'JetBrains Mono', monospace",
+              whiteSpace: "nowrap",
+            }}
+          >
+            still want the files?
+          </span>
+          <div style={{ flex: 1, height: 1, background: "var(--line)" }} />
+        </div>
+      )}
 
       <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-        <p style={{ margin: 0, fontSize: 13, color: "var(--ink-2)" }}>
-          You can download the raw source code. This is the current state of the
-          project, not a packaged release.
-        </p>
+        {!hasReadmeDownloads && (
+          <p style={{ margin: 0, fontSize: 13, color: "var(--ink-2)" }}>
+            You can download the raw source code. This is the current state of the
+            project, not a packaged release.
+          </p>
+        )}
         <button
           className="btn btn-accent"
-          onClick={handleDownload}
+          onClick={() => handleDownload(sourceDownloadUrl, `${repo}.zip`)}
           style={{ alignSelf: "stretch" }}
         >
           <Icon.ArrowDown />
