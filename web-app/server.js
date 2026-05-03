@@ -9,8 +9,24 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PORT = process.env.PORT || 3000;
 
 const app = express();
-app.use(cors());
+app.use(
+  cors({
+    origin: "*",
+    methods: ["GET", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
+  }),
+);
 app.use(express.json());
+
+// Debug logger for API requests
+app.use((req, res, next) => {
+  if (req.path.startsWith("/api")) {
+    console.log(
+      `[${new Date().toISOString()}] ${req.method} ${req.path} - Origin: ${req.get("Origin") || "No Origin"}`,
+    );
+  }
+  next();
+});
 
 app.use(express.static(path.join(__dirname, "client/dist")));
 
@@ -66,20 +82,22 @@ async function ghFetch(url) {
 
 function splitSections(text) {
   const sections = [];
-  let heading = '';
+  let heading = "";
   let buf = [];
-  for (const line of text.split('\n')) {
+  for (const line of text.split("\n")) {
     const m = /^#{1,3}\s+(.+)$/.exec(line);
     if (m) {
-      if (buf.length || heading) sections.push({ heading, content: buf.join('\n') });
+      if (buf.length || heading)
+        sections.push({ heading, content: buf.join("\n") });
       heading = m[1];
       buf = [];
     } else {
       buf.push(line);
     }
   }
-  if (buf.length || heading) sections.push({ heading, content: buf.join('\n') });
-  return sections.length ? sections : [{ heading: '', content: text }];
+  if (buf.length || heading)
+    sections.push({ heading, content: buf.join("\n") });
+  return sections.length ? sections : [{ heading: "", content: text }];
 }
 
 function extractCodeBlocks(text) {
@@ -93,7 +111,7 @@ function extractCodeBlocks(text) {
 }
 
 function stripMarkdown(text) {
-  return text.replace(/```[\s\S]*?```/g, ' ').replace(/`[^`\n]+`/g, ' ');
+  return text.replace(/```[\s\S]*?```/g, " ").replace(/`[^`\n]+`/g, " ");
 }
 
 /**
@@ -104,126 +122,252 @@ function analyzeReadmeComplexity(readmeText, assetNames = []) {
   const sc = { simple: 0, technical: 0, ht: 0 };
   const signals = [];
 
-  function bump(tier, n, signal) { sc[tier] += n; signals.push(signal); }
+  function bump(tier, n, signal) {
+    sc[tier] += n;
+    signals.push(signal);
+  }
 
-  const lc = assetNames.map(n => String(n).toLowerCase());
+  const lc = assetNames.map((n) => String(n).toLowerCase());
 
-  const hasInstaller = lc.some(n =>
-    n.endsWith('.exe') || n.endsWith('.msi') ||
-    n.endsWith('.dmg') || n.endsWith('.pkg') ||
-    n.endsWith('.deb') || n.endsWith('.rpm') ||
-    n.endsWith('.appimage')
+  const hasInstaller = lc.some(
+    (n) =>
+      n.endsWith(".exe") ||
+      n.endsWith(".msi") ||
+      n.endsWith(".dmg") ||
+      n.endsWith(".pkg") ||
+      n.endsWith(".deb") ||
+      n.endsWith(".rpm") ||
+      n.endsWith(".appimage"),
   );
-  const hasJar = lc.some(n => n.endsWith('.jar'));
-  const hasOnlyArchives = lc.length > 0 && !hasInstaller && !hasJar &&
-    lc.every(n =>
-      n.endsWith('.zip') || n.endsWith('.tar.gz') || n.endsWith('.tgz') ||
-      n.endsWith('.tar.xz') || n.endsWith('.tar.bz2') || n.includes('source code')
+  const hasJar = lc.some((n) => n.endsWith(".jar"));
+  const hasOnlyArchives =
+    lc.length > 0 &&
+    !hasInstaller &&
+    !hasJar &&
+    lc.every(
+      (n) =>
+        n.endsWith(".zip") ||
+        n.endsWith(".tar.gz") ||
+        n.endsWith(".tgz") ||
+        n.endsWith(".tar.xz") ||
+        n.endsWith(".tar.bz2") ||
+        n.includes("source code"),
     );
 
-  if (hasInstaller)    bump('simple',   10, 'native platform installer (.exe/.dmg/.deb etc.)');
-  if (hasJar)          bump('technical',  5, '.jar release (needs Java runtime)');
-  if (hasOnlyArchives) bump('technical',  3, 'only archive files, no platform installer');
-  if (lc.length === 0) bump('ht',         6, 'no release assets published');
+  if (hasInstaller)
+    bump("simple", 10, "native platform installer (.exe/.dmg/.deb etc.)");
+  if (hasJar) bump("technical", 5, ".jar release (needs Java runtime)");
+  if (hasOnlyArchives)
+    bump("technical", 3, "only archive files, no platform installer");
+  if (lc.length === 0) bump("ht", 6, "no release assets published");
 
   if (readmeText) {
-    const sections  = splitSections(readmeText);
+    const sections = splitSections(readmeText);
     const fullProse = stripMarkdown(readmeText).toLowerCase();
 
     const htTypes = [
-      [/\b(this is a|a) (library|package|module|sdk|framework)\b/, 'described as a library/package/SDK', 10],
-      [/\bcommand[- ]line (tool|utility|interface|app)\b/,         'command-line tool',                   9],
-      [/\bcli (tool|utility|app|application)\b/,                   'CLI tool',                            9],
-      [/\brest api\b|\bgraphql api\b|\bweb api\b|\bhttp api\b/,    'API / web service',                   7],
-      [/\b(telegram|discord|slack|matrix) bot\b/,                  'messaging bot',                       8],
-      [/\bheader[- ]only\b/,                                       'header-only library (C++)',           10],
-      [/\bautomation script\b/,                                    'automation script',                   6],
-      [/\b(npm|pip|gem|cargo|go get) (install|add)\b/,            'distributed as a package-manager install', 7],
+      [
+        /\b(this is a|a) (library|package|module|sdk|framework)\b/,
+        "described as a library/package/SDK",
+        10,
+      ],
+      [
+        /\bcommand[- ]line (tool|utility|interface|app)\b/,
+        "command-line tool",
+        9,
+      ],
+      [/\bcli (tool|utility|app|application)\b/, "CLI tool", 9],
+      [
+        /\brest api\b|\bgraphql api\b|\bweb api\b|\bhttp api\b/,
+        "API / web service",
+        7,
+      ],
+      [/\b(telegram|discord|slack|matrix) bot\b/, "messaging bot", 8],
+      [/\bheader[- ]only\b/, "header-only library (C++)", 10],
+      [/\bautomation script\b/, "automation script", 6],
+      [
+        /\b(npm|pip|gem|cargo|go get) (install|add)\b/,
+        "distributed as a package-manager install",
+        7,
+      ],
     ];
-    for (const [p, s, w] of htTypes) if (p.test(fullProse)) bump('ht', w, s);
+    for (const [p, s, w] of htTypes) if (p.test(fullProse)) bump("ht", w, s);
 
     const simpleTypes = [
-      [/\bdesktop (app|application)\b/,                            'described as a desktop app',          4],
-      [/\bgui (app|application|tool|program)\b|\bgraphical (user )?interface\b/, 'GUI application',       4],
+      [/\bdesktop (app|application)\b/, "described as a desktop app", 4],
+      [
+        /\bgui (app|application|tool|program)\b|\bgraphical (user )?interface\b/,
+        "GUI application",
+        4,
+      ],
     ];
-    for (const [p, s, w] of simpleTypes) if (p.test(fullProse)) bump('simple', w, s);
+    for (const [p, s, w] of simpleTypes)
+      if (p.test(fullProse)) bump("simple", w, s);
 
     const stacks = [
-      ['simple',    /\belectron\b/,                                    'Electron app',                4],
-      ['simple',    /\btauri\b/,                                       'Tauri app',                   4],
-      ['simple',    /\bwpf\b|\bwinforms\b|\bwinui\b|\bmaui\b/,        '.NET GUI (WPF/WinForms/MAUI)', 4],
-      ['simple',    /\bswiftui\b|\bnsapp\b|\bappkit\b/,               'native macOS/iOS framework',  4],
-      ['simple',    /\bqwidget\b|\bqmainwindow\b|\bqt (gui|widget)\b/, 'Qt GUI widgets',              3],
-      ['simple',    /\bflutter.{0,60}(desktop|windows|macos|linux)/,  'Flutter desktop',             4],
-      ['technical', /\bjavafx\b|\bjavax\.swing\b/,                     'Java GUI (needs JRE)',        4],
-      ['technical', /\btkinter\b|\bpyqt[456]?\b|\bpyside[26]?\b|\bwxpython\b|\bkivy\b/, 'Python GUI (needs Python)', 5],
-      ['ht',        /\bexpress(\.js)?\b|\bfastify\b|\bkoa\b|\bnestjs\b/, 'Node.js server framework', 5],
-      ['ht',        /\bflask\b|\bdjango\b|\bfastapi\b|\buvicorn\b/,   'Python web framework',        5],
-      ['ht',        /\bspring boot\b|\bspring mvc\b/,                  'Spring Boot server',          5],
+      ["simple", /\belectron\b/, "Electron app", 4],
+      ["simple", /\btauri\b/, "Tauri app", 4],
+      [
+        "simple",
+        /\bwpf\b|\bwinforms\b|\bwinui\b|\bmaui\b/,
+        ".NET GUI (WPF/WinForms/MAUI)",
+        4,
+      ],
+      [
+        "simple",
+        /\bswiftui\b|\bnsapp\b|\bappkit\b/,
+        "native macOS/iOS framework",
+        4,
+      ],
+      [
+        "simple",
+        /\bqwidget\b|\bqmainwindow\b|\bqt (gui|widget)\b/,
+        "Qt GUI widgets",
+        3,
+      ],
+      [
+        "simple",
+        /\bflutter.{0,60}(desktop|windows|macos|linux)/,
+        "Flutter desktop",
+        4,
+      ],
+      ["technical", /\bjavafx\b|\bjavax\.swing\b/, "Java GUI (needs JRE)", 4],
+      [
+        "technical",
+        /\btkinter\b|\bpyqt[456]?\b|\bpyside[26]?\b|\bwxpython\b|\bkivy\b/,
+        "Python GUI (needs Python)",
+        5,
+      ],
+      [
+        "ht",
+        /\bexpress(\.js)?\b|\bfastify\b|\bkoa\b|\bnestjs\b/,
+        "Node.js server framework",
+        5,
+      ],
+      [
+        "ht",
+        /\bflask\b|\bdjango\b|\bfastapi\b|\buvicorn\b/,
+        "Python web framework",
+        5,
+      ],
+      ["ht", /\bspring boot\b|\bspring mvc\b/, "Spring Boot server", 5],
     ];
-    for (const [tier, p, s, w] of stacks) if (p.test(fullProse)) bump(tier, w, s);
+    for (const [tier, p, s, w] of stacks)
+      if (p.test(fullProse)) bump(tier, w, s);
 
-    const DEV_SECTION  = /\b(build(ing)?|compil(e|ing)|develop(ment|ing)?|contribut(e|ing)|from[ -]source|debug(ging)?|test(ing)?|ci|docker(file)?)\b/i;
-    const USER_SECTION = /\b(install(ation)?|get(ting)? started|quick[- ]start|usage|running|run|setup|download|how to (use|run)|prerequisite|requirement)\b/i;
+    const DEV_SECTION =
+      /\b(build(ing)?|compil(e|ing)|develop(ment|ing)?|contribut(e|ing)|from[ -]source|debug(ging)?|test(ing)?|ci|docker(file)?)\b/i;
+    const USER_SECTION =
+      /\b(install(ation)?|get(ting)? started|quick[- ]start|usage|running|run|setup|download|how to (use|run)|prerequisite|requirement)\b/i;
 
     for (const { heading, content } of sections) {
       if (DEV_SECTION.test(heading)) continue;
 
       const isUser = !heading || USER_SECTION.test(heading);
-      const wt     = isUser ? 1.0 : 0.5;
+      const wt = isUser ? 1.0 : 0.5;
 
-      const code    = extractCodeBlocks(content);
-      const htCmds  = [
-        [/\bnpm (start|run dev|run start|run serve|run prod)\b/, 'npm start/run',        8],
-        [/\byarn (start|dev|serve)\b/,                           'yarn start/dev',       7],
-        [/\bpython3?\s+\S+\.py\b/,                              'python <script>.py',   8],
-        [/\bpython3?\s+-m\s+\S+/,                               'python -m <module>',   8],
-        [/\bnode\s+\S+\.(?:js|mjs|cjs)\b/,                      'node <script>',        8],
-        [/\bcargo run\b/,                                        'cargo run',            8],
-        [/\bgo run\s+[./]/,                                      'go run',               8],
-        [/\bbash\s+\S+\.sh\b|^\.\/.+\.sh$|sh \S+\.sh\b/,       'bash/shell script',    7],
-        [/\bmake (run|start|serve|launch)\b/,                   'make run/start',       6],
-        [/\bdocker(-compose)? (run|up)\b|docker compose (run|up)\b/, 'docker run/up',  6],
-        [/\buvicorn\b|\bgunicorn\b/,                             'ASGI/WSGI server',    7],
+      const code = extractCodeBlocks(content);
+      const htCmds = [
+        [
+          /\bnpm (start|run dev|run start|run serve|run prod)\b/,
+          "npm start/run",
+          8,
+        ],
+        [/\byarn (start|dev|serve)\b/, "yarn start/dev", 7],
+        [/\bpython3?\s+\S+\.py\b/, "python <script>.py", 8],
+        [/\bpython3?\s+-m\s+\S+/, "python -m <module>", 8],
+        [/\bnode\s+\S+\.(?:js|mjs|cjs)\b/, "node <script>", 8],
+        [/\bcargo run\b/, "cargo run", 8],
+        [/\bgo run\s+[./]/, "go run", 8],
+        [
+          /\bbash\s+\S+\.sh\b|^\.\/.+\.sh$|sh \S+\.sh\b/,
+          "bash/shell script",
+          7,
+        ],
+        [/\bmake (run|start|serve|launch)\b/, "make run/start", 6],
+        [
+          /\bdocker(-compose)? (run|up)\b|docker compose (run|up)\b/,
+          "docker run/up",
+          6,
+        ],
+        [/\buvicorn\b|\bgunicorn\b/, "ASGI/WSGI server", 7],
       ];
-      const techCmds = [
-        [/\bjava -jar\b/, 'java -jar (needs JRE)', 5],
-      ];
+      const techCmds = [[/\bjava -jar\b/, "java -jar (needs JRE)", 5]];
 
       for (const blk of code) {
-        for (const [p, s, w] of htCmds)   if (p.test(blk)) bump('ht',        Math.round(w * wt), s);
-        for (const [p, s, w] of techCmds) if (p.test(blk)) bump('technical', Math.round(w * wt), s);
+        for (const [p, s, w] of htCmds)
+          if (p.test(blk)) bump("ht", Math.round(w * wt), s);
+        for (const [p, s, w] of techCmds)
+          if (p.test(blk)) bump("technical", Math.round(w * wt), s);
       }
 
       if (isUser) {
         const prose = stripMarkdown(content).toLowerCase();
 
         const simpleUse = [
-          [/double[- ]click/,                                        'double-click instruction',       10],
-          [/download and (run|open|launch|execute)/,                 'download-and-run instruction',    8],
-          [/drag.{0,20}to.{0,20}application/,                       'drag to Applications (macOS)',    8],
-          [/no (installation|setup|configuration) (required|needed)/,'no installation required',       8],
-          [/\bportable\b/,                                           'portable app',                    5],
-          [/run the installer|open the installer/,                   'run-the-installer',               7],
-          [/click (next|install|finish)/,                            'click-through installer',         6],
-          [/standalone (app|application|executable|binary)/,        'standalone binary',               6],
-          [/works out of the box/,                                   'works out of the box',            5],
+          [/double[- ]click/, "double-click instruction", 10],
+          [
+            /download and (run|open|launch|execute)/,
+            "download-and-run instruction",
+            8,
+          ],
+          [
+            /drag.{0,20}to.{0,20}application/,
+            "drag to Applications (macOS)",
+            8,
+          ],
+          [
+            /no (installation|setup|configuration) (required|needed)/,
+            "no installation required",
+            8,
+          ],
+          [/\bportable\b/, "portable app", 5],
+          [/run the installer|open the installer/, "run-the-installer", 7],
+          [/click (next|install|finish)/, "click-through installer", 6],
+          [
+            /standalone (app|application|executable|binary)/,
+            "standalone binary",
+            6,
+          ],
+          [/works out of the box/, "works out of the box", 5],
         ];
-        for (const [p, s, w] of simpleUse) if (p.test(prose)) bump('simple', w, s);
+        for (const [p, s, w] of simpleUse)
+          if (p.test(prose)) bump("simple", w, s);
 
         const htPrereqs = [
-          [/requires? python\b|needs? python\b|python [23]\.\d+\s+(?:or\s+)?(?:higher|above|required)/, 'requires Python runtime', 7],
-          [/requires? node\.?js|needs? node\.?js/,                   'requires Node.js runtime',        6],
-          [/requires? go\b|go \d+\.\d+\s*\+/,                       'requires Go runtime',             6],
-          [/requires? rust\b|needs? rust\b/,                         'requires Rust runtime',           6],
-          [/pip install\b|\brequirements\.txt/,                      'pip install / requirements.txt',  5],
-          [/\bnpm install\s*$|\byarn install\s*$/,                   'npm/yarn install required',       4],
+          [
+            /requires? python\b|needs? python\b|python [23]\.\d+\s+(?:or\s+)?(?:higher|above|required)/,
+            "requires Python runtime",
+            7,
+          ],
+          [
+            /requires? node\.?js|needs? node\.?js/,
+            "requires Node.js runtime",
+            6,
+          ],
+          [/requires? go\b|go \d+\.\d+\s*\+/, "requires Go runtime", 6],
+          [/requires? rust\b|needs? rust\b/, "requires Rust runtime", 6],
+          [
+            /pip install\b|\brequirements\.txt/,
+            "pip install / requirements.txt",
+            5,
+          ],
+          [
+            /\bnpm install\s*$|\byarn install\s*$/,
+            "npm/yarn install required",
+            4,
+          ],
         ];
         const techPrereqs = [
-          [/requires? java\b|requires? jre\b|requires? jdk\b/,      'requires Java runtime',           4],
+          [
+            /requires? java\b|requires? jre\b|requires? jdk\b/,
+            "requires Java runtime",
+            4,
+          ],
         ];
-        for (const [p, s, w] of htPrereqs)   if (p.test(prose)) bump('ht',        w, s);
-        for (const [p, s, w] of techPrereqs) if (p.test(prose)) bump('technical', w, s);
+        for (const [p, s, w] of htPrereqs) if (p.test(prose)) bump("ht", w, s);
+        for (const [p, s, w] of techPrereqs)
+          if (p.test(prose)) bump("technical", w, s);
       }
     }
   }
@@ -231,18 +375,43 @@ function analyzeReadmeComplexity(readmeText, assetNames = []) {
   const { simple, technical, ht } = sc;
 
   if (hasInstaller && ht < 8) {
-    return { tier: 'simple', label: 'Simple', detail: 'Download and run. No setup needed.', signals };
+    return {
+      tier: "simple",
+      label: "Simple",
+      detail: "Download and run. No setup needed.",
+      signals,
+    };
   }
   if (ht > simple && ht > technical) {
-    return { tier: 'highly-technical', label: 'Highly Technical', detail: 'Requires a terminal to run. Built for developers.', signals };
+    return {
+      tier: "highly-technical",
+      label: "Highly Technical",
+      detail: "Requires a terminal to run. Built for developers.",
+      signals,
+    };
   }
   if (simple > technical) {
-    return { tier: 'simple', label: 'Simple', detail: 'Download and run. No setup needed.', signals };
+    return {
+      tier: "simple",
+      label: "Simple",
+      detail: "Download and run. No setup needed.",
+      signals,
+    };
   }
   if (technical > 0 || simple > 0) {
-    return { tier: 'technical', label: 'Technical', detail: 'Has releases but may need extra setup to run.', signals };
+    return {
+      tier: "technical",
+      label: "Technical",
+      detail: "Has releases but may need extra setup to run.",
+      signals,
+    };
   }
-  return { tier: 'highly-technical', label: 'Highly Technical', detail: 'No prebuilt installer found. Likely requires a developer.', signals };
+  return {
+    tier: "highly-technical",
+    label: "Highly Technical",
+    detail: "No prebuilt installer found. Likely requires a developer.",
+    signals,
+  };
 }
 
 // ── Main API endpoint ─────────────────────────────────────────────────────
@@ -251,17 +420,23 @@ app.get("/api/repo", async (req, res) => {
   console.log(`[api/repo] ${owner}/${repo}`);
 
   if (!owner || !repo) {
-    return res.status(400).json({ kind: "invalid", message: "Missing owner or repo" });
+    return res
+      .status(400)
+      .json({ kind: "invalid", message: "Missing owner or repo" });
   }
 
   if (!/^[\w.-]+$/.test(owner) || !/^[\w.-]+$/.test(repo)) {
-    return res.status(400).json({ kind: "invalid", message: "Invalid owner or repo name" });
+    return res
+      .status(400)
+      .json({ kind: "invalid", message: "Invalid owner or repo name" });
   }
 
   try {
     const [repoRes, releasesRes, readmeRes] = await Promise.all([
       ghFetch(`https://api.github.com/repos/${owner}/${repo}`),
-      ghFetch(`https://api.github.com/repos/${owner}/${repo}/releases?per_page=5`),
+      ghFetch(
+        `https://api.github.com/repos/${owner}/${repo}/releases?per_page=5`,
+      ),
       ghFetch(`https://api.github.com/repos/${owner}/${repo}/readme`),
     ]);
 
@@ -283,28 +458,39 @@ app.get("/api/repo", async (req, res) => {
       const all = await releasesRes.json();
       releases = all.filter((r) => !r.draft);
     } else {
-      console.warn(`[api/repo] releases fetch failed: ${releasesRes.status} for ${owner}/${repo}`);
+      console.warn(
+        `[api/repo] releases fetch failed: ${releasesRes.status} for ${owner}/${repo}`,
+      );
     }
 
     let readmeText = null;
     if (readmeRes.ok) {
       const readmeJson = await readmeRes.json();
       try {
-        readmeText = Buffer.from(readmeJson.content.replace(/\n/g, ""), "base64").toString("utf-8");
+        readmeText = Buffer.from(
+          readmeJson.content.replace(/\n/g, ""),
+          "base64",
+        ).toString("utf-8");
       } catch {
         // ignore decode failures
       }
     }
 
     const readmeSummary = extractSummary(readmeText);
-    const assetNames = releases.flatMap(r => (r.assets || []).map(a => a.name));
+    const assetNames = releases.flatMap((r) =>
+      (r.assets || []).map((a) => a.name),
+    );
     const appRating = analyzeReadmeComplexity(readmeText, assetNames);
-    console.log(`[api/repo] rating=${appRating.tier} signals=[${appRating.signals.join(', ')}]`);
+    console.log(
+      `[api/repo] rating=${appRating.tier} signals=[${appRating.signals.join(", ")}]`,
+    );
 
     return res.json({ repoJson, releases, readmeSummary, appRating });
   } catch (err) {
     console.error("[api/repo]", err);
-    return res.status(500).json({ kind: "error", message: "Internal server error" });
+    return res
+      .status(500)
+      .json({ kind: "error", message: "Internal server error" });
   }
 });
 
@@ -316,6 +502,8 @@ app.use((_req, res) => {
 app.listen(PORT, () => {
   console.log(`GitHub Download Button running at http://localhost:${PORT}`);
   if (!process.env.GITHUB_TOKEN) {
-    console.warn("[warn] GITHUB_TOKEN not set — GitHub rate limit is 60 req/hr");
+    console.warn(
+      "[warn] GITHUB_TOKEN not set — GitHub rate limit is 60 req/hr",
+    );
   }
 });
