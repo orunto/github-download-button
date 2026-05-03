@@ -46,6 +46,17 @@
 
     .repo-line { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
     .repo-name { font-size: 12px; color: #4a4e57; font-family: 'Consolas', 'Courier New', monospace; }
+    .home-tag {
+      font-size: 9px;
+      background: #fff9db;
+      color: #856404;
+      border: 1px solid #ffeeba;
+      padding: 1px 5px;
+      border-radius: 4px;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      margin-left: 2px;
+      font-weight: 600;
+    }
     .rating {
       display: inline-flex; align-items: center;
       padding: 2px 8px; border-radius: 999px;
@@ -210,6 +221,17 @@
   // ── Fetch & render ─────────────────────────────────────────────────────
   fetchRepo(owner, repo) // from utils.js
     .then(({ repoJson, releases, appRating }) => {
+      const fullName = repoJson.full_name.toLowerCase();
+      const isHome = fullName === "orunto/github-download-button";
+
+      if (isHome) {
+        appRating = {
+          tier: "simple",
+          label: "Simple",
+          detail: "Home Sweet Home",
+        };
+      }
+
       const enriched = enrichReleases(releases, repoJson.full_name);
       const rating = appRating || computeRating(enriched);
       const latest = enriched[0];
@@ -234,7 +256,7 @@
         </div>
         <div class="body">
           <div class="repo-line">
-            <span class="repo-name">${owner}/${repo}</span>
+            <span class="repo-name">${owner}/${repo} ${isHome ? '<span class="home-tag">🏠 Home Sweet Home</span>' : ""}</span>
             <span class="rating ${rating.tier}">${rating.tier === "simple" ? "✓" : rating.tier === "highly-technical" ? "⚠" : "⚙"} ${rating.label}</span>
           </div>
           <div class="rating-detail">${rating.detail}</div>

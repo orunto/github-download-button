@@ -278,9 +278,21 @@ export default function App() {
       }, 500);
 
       try {
-        const { repoJson, releases, readmeSummary, summaryIsAi, appRating } =
+        let { repoJson, releases, readmeSummary, summaryIsAi, appRating } =
           await fetchRepoData(p.owner, p.repo);
         clearInterval(stepTimer);
+
+        const fullName = repoJson.full_name.toLowerCase();
+        const isHome = fullName === "orunto/github-download-button";
+
+        if (isHome) {
+          appRating = {
+            tier: "simple",
+            label: "Simple",
+            detail: "Home Sweet Home",
+          };
+        }
+
         setLoadingStep(LOADING_STEPS.length - 1);
 
         const defaultBranch = repoJson.default_branch || "main";
@@ -766,6 +778,25 @@ function LoadedView({ data, onReset, showToast }) {
                   <span className="owner">{owner}</span>
                   <span className="slash">/</span>
                   <span>{repo}</span>
+                  {owner.toLowerCase() === "orunto" &&
+                    repo.toLowerCase() === "github-download-button" && (
+                      <span
+                        style={{
+                          fontSize: 10,
+                          background: "#fff9db",
+                          color: "#856404",
+                          border: "1px solid #ffeeba",
+                          padding: "2px 6px",
+                          borderRadius: 4,
+                          marginLeft: 8,
+                          verticalAlign: "middle",
+                          fontFamily: "-apple-system, sans-serif",
+                          fontWeight: 600,
+                        }}
+                      >
+                        🏠 Home Sweet Home
+                      </span>
+                    )}
                 </div>
                 <div className="repo-desc">{description}</div>
               </div>

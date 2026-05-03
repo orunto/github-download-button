@@ -74,7 +74,18 @@ function renderSearch(msg) {
 }
 
 function renderResult(owner, repo, data) {
-  const { repoJson, releases, appRating } = data;
+  let { repoJson, releases, appRating } = data;
+  const fullName = repoJson.full_name.toLowerCase();
+  const isHome = fullName === "orunto/github-download-button";
+
+  if (isHome) {
+    appRating = {
+      tier: "simple",
+      label: "Simple",
+      detail: "Home Sweet Home",
+    };
+  }
+
   const enriched = enrichReleases(releases, repoJson.full_name); // utils.js
   const rating = appRating || computeRating(enriched); // utils.js
   const latest = enriched[0];
@@ -96,7 +107,7 @@ function renderResult(owner, repo, data) {
     shell(
       `
     <div class="repo-line">
-      <span class="repo-name">${owner}/${repo}</span>
+      <span class="repo-name">${owner}/${repo} ${isHome ? '<span class="home-tag">🏠 Home Sweet Home</span>' : ""}</span>
       <span class="rating ${rating.tier}">${rating.tier === "simple" ? "✓" : rating.tier === "highly-technical" ? "⚠" : "⚙"} ${rating.label}</span>
     </div>
     <div class="rating-detail">${rating.detail}</div>
