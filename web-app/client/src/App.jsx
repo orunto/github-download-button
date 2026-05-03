@@ -471,7 +471,11 @@ export default function App() {
         <span>
           GitHub Download Button, for people who don't want to learn Git.
         </span>
-        <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
+        <span style={{ display: "inline-flex", alignItems: "center", gap: 16 }}>
+          <a href="/privacy" style={{ fontSize: 13, color: "var(--ink-3)", textDecoration: "none" }}>
+            Privacy policy
+          </a>
+          <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
           built on github's public api · no login required · by{" "}
           <a
             href="https://orunto.dev"
@@ -492,6 +496,7 @@ export default function App() {
             />
             Orunto Eniola
           </a>
+          </span>
         </span>
       </footer>
 
