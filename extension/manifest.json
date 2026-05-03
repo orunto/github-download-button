@@ -6,7 +6,8 @@
   "permissions": ["storage", "activeTab", "tabs"],
   "host_permissions": [
     "https://github.com/*",
-    "http://localhost:3000/*"
+    "http://localhost:3000/*",
+    "https://githubdownloadbutton.orunto.dev/*"
   ],
   "content_scripts": [
     {
