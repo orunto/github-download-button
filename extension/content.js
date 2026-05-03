@@ -26,7 +26,8 @@
       border-bottom: 1px solid #e6e3dc;
       background: #f6f5f1;
     }
-    .brand { font-weight: 700; font-size: 12.5px; letter-spacing: -0.01em; color: #1a1d23; }
+    .brand { display: flex; align-items: center; gap: 6px; font-weight: 700; font-size: 12.5px; letter-spacing: -0.01em; color: #1a1d23; }
+    .brand-logo { width: 16px; height: 16px; display: block; border-radius: 3px; flex-shrink: 0; }
     .close-btn {
       background: none; border: none; cursor: pointer;
       color: #8a8e98; font-size: 13px; padding: 2px 5px;
@@ -156,6 +157,7 @@
   if (document.getElementById("rg-host")) return;
 
   const USER_OS = detectOS(); // from utils.js
+  const LOGO_URL = chrome.runtime.getURL("icons/icon32.png");
 
   // ── Build shadow DOM ───────────────────────────────────────────────────
   const host = document.createElement("div");
@@ -208,7 +210,7 @@
   // ── Loading state ──────────────────────────────────────────────────────
   panel.innerHTML = `
     <div class="header">
-      <span class="brand">↓ GitHub Download Button</span>
+      <span class="brand"><img class="brand-logo" src="${LOGO_URL}" alt=""/>GitHub Download Button</span>
       <button class="close-btn" title="Dismiss">✕</button>
     </div>
     <div class="body">
@@ -251,7 +253,7 @@
 
       panel.innerHTML = `
         <div class="header">
-          <span class="brand">↓ GitHub Download Button</span>
+          <span class="brand"><img class="brand-logo" src="${LOGO_URL}" alt=""/>GitHub Download Button</span>
           <button class="close-btn" title="Dismiss">✕</button>
         </div>
         <div class="body">
@@ -293,7 +295,7 @@
       }
       panel.innerHTML = `
         <div class="header">
-          <span class="brand">↓ GitHub Download Button</span>
+          <span class="brand"><img class="brand-logo" src="${LOGO_URL}" alt=""/>GitHub Download Button</span>
           <button class="close-btn" title="Dismiss">✕</button>
         </div>
         <div class="body">
@@ -319,7 +321,7 @@
     });
     panel.innerHTML = `
       <div class="header">
-        <span class="brand">↓ GitHub Download Button</span>
+        <span class="brand"><img class="brand-logo" src="${LOGO_URL}" alt=""/>GitHub Download Button</span>
         <button class="close-btn" title="Dismiss">✕</button>
       </div>
       <div class="body">

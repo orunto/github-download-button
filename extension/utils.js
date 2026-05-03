@@ -113,7 +113,7 @@ function computeRating(enrichedReleases) {
     return {
       tier: "simple",
       label: "Simple",
-      detail: "Download and run. No setup needed.",
+      detail: "Download and run. Little to no setup needed.",
     };
   return {
     tier: "technical",

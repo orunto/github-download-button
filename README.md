@@ -38,7 +38,7 @@ The project ships in two forms: a web app you can open in a browser, and a Chrom
 ## Features
 
 - **OS detection.** Automatically highlights the release asset that matches your platform, Windows, macOS, or Linux, and pushes it to the top of the list.
-- **Three-tier complexity rating.** Every repo is rated Simple (download and run, no setup needed), Technical (has releases but needs a runtime like Java), or Highly Technical (requires a terminal to run, built for developers). The rating is determined by a README parser that reads installation instructions, detects terminal commands in user-facing sections, identifies the tech stack, and checks for runtime prerequisites.
+- **Three-tier complexity rating.** Every repo is rated Simple (download and run, litle to no setup needed), Technical (has releases but needs a runtime like Java), or Highly Technical (requires a terminal to run, built for developers). The rating is determined by a README parser that reads installation instructions, detects terminal commands in user-facing sections, identifies the tech stack, and checks for runtime prerequisites.
 - **README summaries.** The backend extracts a plain-text summary from the README so you know what the project does before downloading anything.
 - **Chrome extension.** A shadow-DOM panel injects on any `github.com/owner/repo` page, auto-fetches release data, and dismisses per session. The popup also works as a standalone search for repos you are not currently viewing.
 - **No login, no tracking.** Everything goes through GitHub's public API. No account required.
